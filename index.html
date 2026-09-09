@@ -6,6 +6,9 @@
     <title>Moto Garage & Officina Multiplayer</title>
     <!-- PeerJS per Multiplayer -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- TensorFlow.js e Modello MobileNet per il riconoscimento visivo IA -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -379,7 +382,7 @@
             <div class="stats-box" style="margin-top: 12px;">
                 <div class="stat-row">
                     <span>Nome:</span> 
-                    <input type="text" id="bikeBrandInput" placeholder="Es. Scooter, Moto, Sh, Zip" value="">
+                    <input type="text" id="bikeBrandInput" placeholder="Nome Moto" value="Mia Moto">
                 </div>
                 <div class="stat-row">
                     <span>Categoria:</span>
@@ -535,6 +538,7 @@
     let peerConn = null;
     let testInterval = null;
     let currentSelectedRace = null;
+    let aiModel = null; // Modello di Intelligenza Artificiale
 
     const shopItems = [
         { id: 'gruppo', category: 'Gruppi Termici', name: 'Gruppo Termico 70cc Base Ghisa', desc: 'Forte spinta iniziale', price: 160, accelMult: 1.4, maxSpeedBonus: 15 },
@@ -557,6 +561,16 @@
         { id: 1, name: 'Gara Sprint Semafaro (0-50 km/h)', desc: 'Chi ha più spunto iniziale vince', reward: 250, reqSpeed: 55 },
         { id: 2, name: 'Rettilineo di Prova (1 Km)', desc: 'Serve accelerazione e grande velocità finale', reward: 1200, reqSpeed: 85 }
     ];
+
+    // Caricamento del modello IA locale all'avvio
+    async function loadAIModel() {
+        try {
+            aiModel = await mobilenet.load();
+            console.log("Modello IA visivo caricato correttamente!");
+        } catch (error) {
+            console.error("Errore caricamento IA:", error);
+        }
+    }
 
     function calculateBikeMaxSpeed(bike) {
         let baseSpeed = bike.modelType === 'sportbike' ? 110 : 48;
@@ -698,31 +712,45 @@
         }
     });
 
-    // Validazione intelligente per riconoscere se si tratta effettivamente di una moto/motorino
-    function saveBike() {
+    // Funzione di salvataggio con controllo visivo IA (blocca cani, oggetti o foto non inerenti)
+    async function saveBike() {
         if (!gameState.tempPhoto) {
             alert("⚠️ Scatta o seleziona una foto della moto prima di salvare!");
             return;
         }
 
-        const brandInput = document.getElementById('bikeBrandInput').value.trim();
-        if (!brandInput) {
-            alert("⚠️ Inserisci un nome per identificare il veicolo.");
+        const brand = document.getElementById('bikeBrandInput').value || "Mia Moto";
+
+        if (!aiModel) {
+            alert("⏳ L'Intelligenza Artificiale si sta ancora avviando. Attendi qualche istante e riprova.");
             return;
         }
 
-        // Controllo validità tramite parole chiave del settore
-        const validKeywords = [
-            'moto', 'scooter', 'motorino', 'cinquantino', 'vespa', 'sh', 'zip', 
-            'nsr', 'cross', 'enduro', 'motard', 'naked', 'sportiva', 'scarabeo', 
-            'agility', 'tpc', 'tmax', 'custom', 'pitbike', 'ciclomotore', '125', '50'
-        ];
+        // Creazione elemento immagine temporaneo per l'analisi visiva
+        const imgElement = document.createElement('img');
+        imgElement.src = gameState.tempPhoto;
+        await new Promise((resolve) => {
+            imgElement.onload = resolve;
+        });
 
-        const lowerInput = brandInput.toLowerCase();
-        const isVehicle = validKeywords.some(keyword => lowerInput.includes(keyword));
+        // Analisi IA dei pixel dell'immagine
+        const predictions = await aiModel.classify(imgElement);
+        console.log("Risultati IA:", predictions);
 
-        if (!isVehicle) {
-            alert("❌ Controllo AI fallito: Il nome inserito non corrisponde a un motorino o a una moto! Inserisci un nome valido (es. 'Scooter 50', 'Yamaha TMax', 'Vespa') per confermare che si tratti di un veicolo.");
+        const validBikeClasses = ['motorcycle', 'moped', 'motor scooter', 'bicycle', 'tricycle', 'minibike'];
+        let isMotorbike = false;
+
+        predictions.forEach(prediction => {
+            const className = prediction.className.toLowerCase();
+            validBikeClasses.forEach(keyword => {
+                if (className.includes(keyword)) {
+                    isMotorbike = true;
+                }
+            });
+        });
+
+        if (!isMotorbike) {
+            alert("❌ Controllo IA fallito: L'intelligenza artificiale ha esaminato la foto e ha rilevato un cane, un oggetto o un soggetto non valido. Puoi salvare nel garage solo foto di moto o motorini!");
             return;
         }
 
@@ -733,7 +761,7 @@
 
         const newBike = {
             id: Date.now(),
-            brand: brandInput,
+            brand: brand,
             modelType: modelType,
             photo: gameState.tempPhoto,
             parts: initialParts
@@ -743,9 +771,9 @@
         gameState.tempPhoto = null;
         document.getElementById('bikeImage').style.display = 'none';
         document.getElementById('placeholderText').style.display = 'block';
-        document.getElementById('bikeBrandInput').value = "";
+        document.getElementById('bikeBrandInput').value = "Mia Moto";
         
-        alert("✅ Controllo superato: Motorino salvato con successo nel Garage!");
+        alert("✅ IA Approvata: Motorino riconosciuto correttamente e salvato nel Garage!");
         updateUI();
     }
 
@@ -944,7 +972,7 @@
                     <div class="slot-header" onclick="toggleDropdown('${cat.key}')">
                         <div>
                             <strong style="font-size:0.85rem; color: var(--accent);">${cat.label}</strong><br>
-                            <span style="font-size:0.80rem; color: #f8fafc;">Montato: ${installedName}</span>
+                            <span style="font-size:0.8rem; color: #f8fafc;">Montato: ${installedName}</span>
                         </div>
                         <span style="font-size:0.8rem;">▼</span>
                     </div>
@@ -1037,9 +1065,10 @@
         });
     }
 
-    window.onload = () => {
+    window.onload = async () => {
         updateUI();
         initPeerJS();
+        await loadAIModel(); // Inizializza l'intelligenza artificiale all'avvio
     };
 </script>
 </body>
