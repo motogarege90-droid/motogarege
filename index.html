@@ -240,7 +240,7 @@
             font-size: 0.85rem;
         }
 
-        /* TESTER E TACHIMETRO REALISTICO */
+        /* TESTER E TACHIMETRO */
         .tester-container {
             background: #090d16;
             border: 1px solid var(--accent);
@@ -278,13 +278,11 @@
             border: 1px solid var(--accent);
             margin-bottom: 20px;
         }
-
         .link-container {
             display: flex;
             gap: 5px;
             margin-top: 10px;
         }
-
         .link-input {
             flex: 1;
             background: #1e293b;
@@ -294,7 +292,6 @@
             border-radius: 6px;
             font-size: 0.8rem;
         }
-
         .status-badge {
             display: inline-block;
             padding: 4px 8px;
@@ -382,7 +379,7 @@
             <div class="stats-box" style="margin-top: 12px;">
                 <div class="stat-row">
                     <span>Nome:</span> 
-                    <input type="text" id="bikeBrandInput" placeholder="Nome Moto" value="Mia Moto">
+                    <input type="text" id="bikeBrandInput" placeholder="Es. Scooter, Moto, Sh, Zip" value="">
                 </div>
                 <div class="stat-row">
                     <span>Categoria:</span>
@@ -413,7 +410,7 @@
             <div id="inventoryList"></div>
         </div>
 
-        <!-- TESTER ACCELERAZIONE REALE -->
+        <!-- TESTER ACCELERAZIONE -->
         <div id="tab-tester" class="tab-content">
             <h3>⏱️ Prova Accelerazione Reale</h3>
             <p style="font-size: 0.8rem; color: #94a3b8; margin-top: -5px;">Spunto immediato allo scatto, poi allungo progressivo fino al limite!</p>
@@ -701,13 +698,34 @@
         }
     });
 
+    // Validazione intelligente per riconoscere se si tratta effettivamente di una moto/motorino
     function saveBike() {
         if (!gameState.tempPhoto) {
-            alert("⚠️ Scatta una foto alla moto prima di salvare!");
+            alert("⚠️ Scatta o seleziona una foto della moto prima di salvare!");
             return;
         }
 
-        const brand = document.getElementById('bikeBrandInput').value || "Moto Personalizzata";
+        const brandInput = document.getElementById('bikeBrandInput').value.trim();
+        if (!brandInput) {
+            alert("⚠️ Inserisci un nome per identificare il veicolo.");
+            return;
+        }
+
+        // Controllo validità tramite parole chiave del settore
+        const validKeywords = [
+            'moto', 'scooter', 'motorino', 'cinquantino', 'vespa', 'sh', 'zip', 
+            'nsr', 'cross', 'enduro', 'motard', 'naked', 'sportiva', 'scarabeo', 
+            'agility', 'tpc', 'tmax', 'custom', 'pitbike', 'ciclomotore', '125', '50'
+        ];
+
+        const lowerInput = brandInput.toLowerCase();
+        const isVehicle = validKeywords.some(keyword => lowerInput.includes(keyword));
+
+        if (!isVehicle) {
+            alert("❌ Controllo AI fallito: Il nome inserito non corrisponde a un motorino o a una moto! Inserisci un nome valido (es. 'Scooter 50', 'Yamaha TMax', 'Vespa') per confermare che si tratti di un veicolo.");
+            return;
+        }
+
         const modelType = document.getElementById('model3dSelect').value;
 
         const initialParts = {};
@@ -715,7 +733,7 @@
 
         const newBike = {
             id: Date.now(),
-            brand: brand,
+            brand: brandInput,
             modelType: modelType,
             photo: gameState.tempPhoto,
             parts: initialParts
@@ -725,9 +743,9 @@
         gameState.tempPhoto = null;
         document.getElementById('bikeImage').style.display = 'none';
         document.getElementById('placeholderText').style.display = 'block';
-        document.getElementById('bikeBrandInput').value = "Mia Moto";
+        document.getElementById('bikeBrandInput').value = "";
         
-        alert("Motorino salvato nel Garage!");
+        alert("✅ Controllo superato: Motorino salvato con successo nel Garage!");
         updateUI();
     }
 
@@ -749,7 +767,6 @@
         }
     }
 
-    /* SELEZIONE MOTO E GARA */
     function openRaceBikeSelection(reqSpeed, reward) {
         if (gameState.savedBikes.length === 0) {
             alert("⚠️ Non hai moto nel Garage! Creane e salvane una prima di gareggiare.");
@@ -798,7 +815,6 @@
         updateUI();
     }
 
-    /* TESTER ACCELERAZIONE REALE */
     function updateTesterOptions() {
         const select = document.getElementById('testerBikeSelect');
         const currentVal = select.value;
@@ -847,51 +863,29 @@
 
         let currentSpeed = 0.0;
         let elapsedSeconds = 0.0;
-        let timeTo40 = null;
-        let timeToMax = null;
-
-        const dt = 0.03;
-
-        document.getElementById('startTestBtn').disabled = true;
-        document.getElementById('testResultText').innerText = "🏍️ Spalancato! In accelerazione...";
+        let startBtn = document.getElementById('startTestBtn');
+        startBtn.disabled = true;
+        document.getElementById('testResultText').innerText = "In accelerazione...";
 
         testInterval = setInterval(() => {
-            elapsedSeconds += dt;
-
-            let speedRatio = currentSpeed / maxSpeed;
-            let baseRate = 18.0 * accelMultiplier;
+            elapsedSeconds += 0.05;
             
-            let currentAccel = 0;
-            if (speedRatio < 0.65) {
-                currentAccel = baseRate;
-            } else if (speedRatio < 0.88) {
-                currentAccel = baseRate * (1.0 - (speedRatio - 0.65) * 2.2);
-            } else {
-                currentAccel = baseRate * 0.18 * Math.max(0.05, (1.0 - speedRatio));
-            }
+            let speedDiff = maxSpeed - currentSpeed;
+            let accelStep = (speedDiff * 0.08) * accelMultiplier;
+            if (accelStep < 0.1) accelStep = 0.1;
+            
+            currentSpeed += accelStep;
 
-            currentSpeed += currentAccel * dt;
-
-            if (currentSpeed >= 40 && !timeTo40) {
-                timeTo40 = elapsedSeconds.toFixed(2);
-            }
-
-            if (currentSpeed >= (maxSpeed - 0.2) || elapsedSeconds >= 25.0) {
+            if (currentSpeed >= maxSpeed) {
                 currentSpeed = maxSpeed;
-                timeToMax = elapsedSeconds.toFixed(2);
                 clearInterval(testInterval);
-                document.getElementById('startTestBtn').disabled = false;
-                
-                let resHtml = `🏁 Velocità Massima Raggiunta: <strong>${maxSpeed} km/h</strong> in <strong>${timeToMax}s</strong>`;
-                if (timeTo40) {
-                    resHtml += `<br>⚡ Da 0 a 40 km/h scattato in: <strong>${timeTo40} secondi</strong>!`;
-                }
-                document.getElementById('testResultText').innerHTML = resHtml;
+                startBtn.disabled = false;
+                document.getElementById('testResultText').innerText = `🎯 Velocità massima raggiunta in ${elapsedSeconds.toFixed(2)} secondi!`;
             }
 
-            document.getElementById('speedDisplay').innerText = Math.floor(currentSpeed);
+            document.getElementById('speedDisplay').innerText = Math.round(currentSpeed);
             document.getElementById('timerDisplay').innerText = elapsedSeconds.toFixed(2);
-        }, 30);
+        }, 50);
     }
 
     function openWorkshop(bikeId) {
@@ -900,141 +894,153 @@
         updateWorkshopUI();
     }
 
+    function toggleDropdown(catKey) {
+        const drop = document.getElementById(`dropdown-${catKey}`);
+        if (drop) drop.classList.toggle('open');
+    }
+
     function updateWorkshopUI() {
-        const bike = gameState.savedBikes.find(b => b.id === gameState.activeBikeId);
+        if (!gameState.activeBikeId) return;
+
+        const bike = gameState.savedBikes.find(b => b.id == gameState.activeBikeId);
         if (!bike) return;
 
-        const speed = calculateBikeMaxSpeed(bike);
-        document.getElementById('workshopBikeName').innerText = `${bike.brand}`;
-        document.getElementById('workshopBikeSpeed').innerText = `⚡ Velocità Max Attuale: ${speed} km/h`;
         document.getElementById('workshopBikeImage').src = bike.photo;
+        document.getElementById('workshopBikeName').innerText = bike.brand;
+        document.getElementById('workshopBikeSpeed').innerText = `Velocità Max: ${calculateBikeMaxSpeed(bike)} km/h`;
 
         let slotsHtml = '';
         engineCategories.forEach(cat => {
-            const mountedPart = bike.parts[cat.key];
-            const compatibleParts = gameState.inventory.filter(i => i.id === cat.key);
+            const installedPart = bike.parts[cat.key];
+            const installedName = installedPart ? installedPart.name : 'Originale / Vuoto';
 
-            let dropdownItemsHtml = '';
-            if (compatibleParts.length === 0) {
-                dropdownItemsHtml = `<p style="font-size:0.75rem; color:#94a3b8; margin:5px 0;">Nessun pezzo compatibile in inventario.</p>`;
-            } else {
-                compatibleParts.forEach(part => {
-                    dropdownItemsHtml += `
-                        <div class="part-option">
-                            <span>${part.name}</span>
-                            <button class="edit-btn" style="background:var(--success); color:white;" onclick="mountPart('${cat.key}', ${part.uniqueKey})">Monta</button>
-                        </div>
-                    `;
-                });
+            const availableParts = gameState.inventory.filter(item => item.id === cat.key);
+
+            let optionsHtml = '';
+            if (installedPart) {
+                optionsHtml += `
+                    <div class="part-option">
+                        <span>Originale (Rimuovi Elaborazione)</span>
+                        <button class="btn" style="width:auto; margin:0; padding:4px 8px;" onclick="uninstallPart('${cat.key}')">Smonta</button>
+                    </div>
+                `;
+            }
+
+            availableParts.forEach(invItem => {
+                optionsHtml += `
+                    <div class="part-option">
+                        <span>${invItem.name}</span>
+                        <button class="btn" style="width:auto; margin:0; padding:4px 8px;" onclick="installPart('${cat.key}', ${invItem.uniqueKey})">Monta</button>
+                    </div>
+                `;
+            });
+
+            if (optionsHtml === '') {
+                optionsHtml = `<p style="font-size:0.75rem; color:#94a3b8; margin:5px 0;">Nessun ricambio disponibile in inventario per questa categoria.</p>`;
             }
 
             slotsHtml += `
                 <div class="slot-box">
-                    <div class="slot-header" onclick="toggleSlotDropdown('${cat.key}')">
+                    <div class="slot-header" onclick="toggleDropdown('${cat.key}')">
                         <div>
-                            <strong>${cat.label}</strong><br>
-                            <span style="font-size:0.8rem; color:${mountedPart ? 'var(--accent)' : '#94a3b8'};">
-                                ${mountedPart ? '🔧 In uso: ' + mountedPart.name : '⚪ Originale'}
-                            </span>
+                            <strong style="font-size:0.85rem; color: var(--accent);">${cat.label}</strong><br>
+                            <span style="font-size:0.80rem; color: #f8fafc;">Montato: ${installedName}</span>
                         </div>
-                        <div>
-                            ${mountedPart ? `<button class="edit-btn" style="background:var(--danger); margin-right:5px;" onclick="event.stopPropagation(); unmountPart('${cat.key}')">Smonta</button>` : ''}
-                            <span>▼</span>
-                        </div>
+                        <span style="font-size:0.8rem;">▼</span>
                     </div>
                     <div class="dropdown-content" id="dropdown-${cat.key}">
-                        ${dropdownItemsHtml}
+                        ${optionsHtml}
                     </div>
                 </div>
             `;
         });
+
         document.getElementById('installedPartsSlots').innerHTML = slotsHtml;
     }
 
-    function toggleSlotDropdown(key) {
-        const drop = document.getElementById(`dropdown-${key}`);
-        if (drop) drop.classList.toggle('open');
-    }
+    function installPart(catKey, uniqueKey) {
+        const bike = gameState.savedBikes.find(b => b.id == gameState.activeBikeId);
+        const itemIdx = gameState.inventory.findIndex(i => i.uniqueKey === uniqueKey);
+        if (!bike || itemIdx === -1) return;
 
-    function mountPart(slotKey, uniqueKey) {
-        const bike = gameState.savedBikes.find(b => b.id === gameState.activeBikeId);
-        if (!bike) return;
-
-        const invIndex = gameState.inventory.findIndex(i => i.uniqueKey === uniqueKey);
-        if (invIndex === -1) return;
-
-        const newPart = gameState.inventory[invIndex];
-
-        if (bike.parts[slotKey]) {
-            gameState.inventory.push(bike.parts[slotKey]);
+        if (bike.parts[catKey]) {
+            gameState.inventory.push(bike.parts[catKey]);
         }
 
-        bike.parts[slotKey] = newPart;
-        gameState.inventory.splice(invIndex, 1);
+        const partToInstall = gameState.inventory.splice(itemIdx, 1)[0];
+        bike.parts[catKey] = partToInstall;
 
         updateUI();
     }
 
-    function unmountPart(slotKey) {
-        const bike = gameState.savedBikes.find(b => b.id === gameState.activeBikeId);
-        if (!bike || !bike.parts[slotKey]) return;
+    function uninstallPart(catKey) {
+        const bike = gameState.savedBikes.find(b => b.id == gameState.activeBikeId);
+        if (!bike || !bike.parts[catKey]) return;
 
-        gameState.inventory.push(bike.parts[slotKey]);
-        bike.parts[slotKey] = null;
+        gameState.inventory.push(bike.parts[catKey]);
+        bike.parts[catKey] = null;
 
         updateUI();
     }
 
-    /* MULTIPLAYER PEERJS */
-    function createLiveLobby() {
-        if (peer) peer.destroy();
-
-        const randomId = 'garage-room-' + Math.floor(Math.random() * 10000);
-        peer = new Peer(randomId);
+    function initPeerJS() {
+        peer = new Peer();
 
         peer.on('open', (id) => {
-            const link = window.location.origin + window.location.pathname + '?room=' + id;
-            document.getElementById('inviteLinkInput').value = link;
-            document.getElementById('linkBox').style.display = 'flex';
-            document.getElementById('connectionStatus').innerText = 'In attesa dell\'avversario...';
-            document.getElementById('connectionStatus').className = 'status-badge status-offline';
-            
-            navigator.clipboard.writeText(link).then(() => {
-                alert("Link della stanza copiato negli appunti!");
-            });
+            const urlParams = new URLSearchParams(window.location.search);
+            const joinId = urlParams.get('join');
+            if (joinId) {
+                connectToPeer(joinId);
+            }
         });
 
         peer.on('connection', (conn) => {
             peerConn = conn;
-            setupPeerEvents();
+            setupMultiplayerEvents();
         });
     }
 
-    function setupPeerEvents() {
-        document.getElementById('connectionStatus').innerText = 'Online - Connesso!';
-        document.getElementById('connectionStatus').className = 'status-badge status-online';
+    function createLiveLobby() {
+        if (!peer || !peer.id) {
+            alert("Connessione di rete non ancora pronta. Riprova tra poco.");
+            return;
+        }
+
+        const inviteUrl = `${window.location.origin}${window.location.pathname}?join=${peer.id}`;
+        document.getElementById('inviteLinkInput').value = inviteUrl;
+        document.getElementById('linkBox').style.display = 'flex';
+
+        navigator.clipboard.writeText(inviteUrl).then(() => {
+            alert("Link di sfida copiato negli appunti! Invialo al tuo amico.");
+        }).catch(() => {
+            alert("Link generato! Copialo dalla casella di testo.");
+        });
+    }
+
+    function connectToPeer(hostId) {
+        peerConn = peer.connect(hostId);
+        setupMultiplayerEvents();
+    }
+
+    function setupMultiplayerEvents() {
+        peerConn.on('open', () => {
+            const statusBadge = document.getElementById('connectionStatus');
+            statusBadge.innerText = 'Online';
+            statusBadge.className = 'status-badge status-online';
+            alert("🤝 Connesso al tuo avversario! Siete pronti per gareggiare.");
+        });
 
         peerConn.on('data', (data) => {
-            console.log('Ricevuto:', data);
+            if (data.type === 'race_challenge') {
+                alert(`🏁 Sfida ricevuta! L'avversario usa: ${data.bikeName} con Vel. Max: ${data.maxSpeed} km/h`);
+            }
         });
     }
 
-    function checkURLRoom() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const roomId = urlParams.get('room');
-        if (roomId) {
-            switchTab('races', document.querySelectorAll('.nav-btn')[4]);
-            peer = new Peer();
-            peer.on('open', () => {
-                peerConn = peer.connect(roomId);
-                setupPeerEvents();
-            });
-        }
-    }
-
-    // Inizializzazione
-    updateUI();
-    checkURLRoom();
+    window.onload = () => {
+        updateUI();
+        initPeerJS();
+    };
 </script>
 </body>
 </html>
