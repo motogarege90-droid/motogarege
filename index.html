@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Moto Garage & Officina Multiplayer</title>
-    <!-- Librerie TensorFlow.js + COCO-SSD per il Riconoscimento AI della Moto -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
     <!-- PeerJS per Multiplayer -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -43,7 +40,6 @@
             display: flex;
             flex-direction: column;
             border: none;
-            position: relative;
         }
         header {
             background: #090d16;
@@ -244,7 +240,7 @@
             font-size: 0.85rem;
         }
 
-        /* TESTER E TACHIMETRO */
+        /* TESTER E TACHIMETRO REALISTICO */
         .tester-container {
             background: #090d16;
             border: 1px solid var(--accent);
@@ -310,26 +306,25 @@
         .status-offline { background: #475569; color: white; }
         .status-online { background: var(--success); color: #0f172a; }
 
-        /* MODALI PERSONALIZZATI */
+        /* MODALE SELEZIONE MOTO */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0;
             width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.8);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 2000;
+            z-index: 1000;
         }
         .modal-card {
             background: #1e293b;
             border: 1px solid var(--accent);
             border-radius: 12px;
             padding: 20px;
-            width: 85%;
-            max-width: 380px;
-            box-shadow: 0 4px 25px rgba(0,0,0,0.8);
-            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
 
         nav {
@@ -367,7 +362,7 @@
 <div class="app-container">
     <header>
         <h1>🏍️ Moto Garage & Officina</h1>
-        <div class="wallet" id="moneyDisplay">💰 0 €</div>
+        <div class="wallet" id="moneyDisplay">💰 1.200 €</div>
     </header>
 
     <div class="content">
@@ -375,18 +370,14 @@
         <div id="tab-garage" class="tab-content active">
             <h3>Aggiungi Nuova Moto</h3>
             <div class="bike-preview" id="bikePreviewBox">
-                <span id="placeholderText">Scatta una foto alla moto con la fotocamera per farla analizzare...</span>
+                <span id="placeholderText">Scatta una foto alla moto con la fotocamera</span>
                 <img id="bikeImage" src="" alt="Moto">
             </div>
             
             <label class="btn" style="display:block; text-align:center; box-sizing: border-box;">
                 📸 Scatta Foto Fotocamera
-                <input type="file" id="cameraInput" accept="image/*" capture="camera">
+                <input type="file" id="cameraInput" accept="image/*" capture="environment">
             </label>
-
-            <div id="aiStatusText" style="text-align: center; font-size: 0.85rem; color: #f59e0b; margin-top: 8px;">
-                🔄 Caricamento controllo AI foto...
-            </div>
 
             <div class="stats-box" style="margin-top: 12px;">
                 <div class="stat-row">
@@ -402,7 +393,7 @@
                 </div>
             </div>
 
-            <button class="btn" id="saveBikeBtn" style="background: var(--success); color: white;" onclick="saveBike()" disabled>💾 Salva nel Garage</button>
+            <button class="btn" style="background: var(--success); color: white;" onclick="saveBike()">💾 Salva nel Garage</button>
 
             <h3 style="margin-top: 20px;">Le tue Moto Salvate</h3>
             <div class="saved-bikes-grid" id="savedBikesGrid"></div>
@@ -493,27 +484,18 @@
         </div>
     </div>
 
-    <!-- POPUP MESSAGGI PERSONALIZZATO -->
-    <div id="msgModal" class="modal-overlay">
-        <div class="modal-card">
-            <h3 id="msgTitle" style="margin-top: 0; color: var(--accent);">Messaggio</h3>
-            <p id="msgText" style="font-size: 0.9rem; color: white; margin: 15px 0;"></p>
-            <button class="btn" style="background: var(--accent); color: #0f172a; margin-top: 10px;" onclick="closeMsgModal()">OK</button>
-        </div>
-    </div>
-
     <!-- MODALE SELEZIONE MOTO PER GARA -->
     <div id="raceBikeModal" class="modal-overlay">
         <div class="modal-card">
             <h3 style="margin-top: 0; color: var(--accent);">Scegli la tua Moto</h3>
-            <p style="font-size: 0.85rem; color: #94a3b8; text-align: left;">Seleziona la moto con cui disputare la gara:</p>
+            <p style="font-size: 0.85rem; color: #94a3b8;">Seleziona la moto con cui disputare la gara:</p>
             <div class="stat-row">
                 <select id="raceBikeSelect" style="width: 100%; padding: 10px; margin-bottom: 15px;">
                     <option value="">-- Seleziona una Moto --</option>
                 </select>
             </div>
             <div style="display: flex; gap: 10px;">
-                <button class="btn" style="background: var(--success); color: white; margin-top:0;" onclick="confirmRaceStart()">🚦 Partecipa</button>
+                <button class="btn" style="background: var(--success); color: white; margin-top:0;" onclick="confirmRaceStart()">🚦 Partecipa alla Gara</button>
                 <button class="btn" style="background: var(--danger); color: white; margin-top:0;" onclick="closeRaceModal()">Annulla</button>
             </div>
         </div>
@@ -544,11 +526,8 @@
 </div>
 
 <script>
-    let cocoModel = null;
-    let isPhotoVerified = false;
-
     let gameState = {
-        money: 0,
+        money: 1200,
         savedBikes: [],
         inventory: [],
         activeBikeId: null,
@@ -559,30 +538,6 @@
     let peerConn = null;
     let testInterval = null;
     let currentSelectedRace = null;
-
-    // Caricamento IA TensorFlow COCO-SSD
-    async function loadAIModel() {
-        try {
-            cocoModel = await cocoSsd.load();
-            document.getElementById('aiStatusText').innerText = "✅ AI Pronta: scatta la foto alla moto per verificarla.";
-            document.getElementById('aiStatusText').style.color = "var(--success)";
-        } catch (err) {
-            console.error(err);
-            document.getElementById('aiStatusText').innerText = "⚠️ Errore caricamento AI.";
-            document.getElementById('aiStatusText').style.color = "var(--danger)";
-        }
-    }
-    loadAIModel();
-
-    function showCustomAlert(title, text) {
-        document.getElementById('msgTitle').innerText = title;
-        document.getElementById('msgText').innerText = text;
-        document.getElementById('msgModal').style.display = 'flex';
-    }
-
-    function closeMsgModal() {
-        document.getElementById('msgModal').style.display = 'none';
-    }
 
     const shopItems = [
         { id: 'gruppo', category: 'Gruppi Termici', name: 'Gruppo Termico 70cc Base Ghisa', desc: 'Forte spinta iniziale', price: 160, accelMult: 1.4, maxSpeedBonus: 15 },
@@ -602,7 +557,7 @@
     ];
 
     const publicRaces = [
-        { id: 1, name: 'Gara Sprint Semafaro (0-50 km/h)', desc: 'Chi ha più spunto iniziale vince', reward: 250, reqSpeed: 45 },
+        { id: 1, name: 'Gara Sprint Semafaro (0-50 km/h)', desc: 'Chi ha più spunto iniziale vince', reward: 250, reqSpeed: 55 },
         { id: 2, name: 'Rettilineo di Prova (1 Km)', desc: 'Serve accelerazione e grande velocità finale', reward: 1200, reqSpeed: 85 }
     ];
 
@@ -731,60 +686,24 @@
         }
     }
 
-    // SCATTO FOTO E VERIFICA MOTO CON L'INTELLIGENZA ARTIFICIALE
-    document.getElementById('cameraInput').addEventListener('change', async function(event) {
+    document.getElementById('cameraInput').addEventListener('change', function(event) {
         const file = event.target.files[0];
-        if (!file) return;
-
-        const img = document.getElementById('bikeImage');
-        const saveBtn = document.getElementById('saveBikeBtn');
-        const aiStatusText = document.getElementById('aiStatusText');
-
-        saveBtn.disabled = true;
-        saveBtn.innerText = "🔍 Analisi foto...";
-        aiStatusText.innerText = "🔍 Controllo foto in corso...";
-        aiStatusText.style.color = "#f59e0b";
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            img.src = e.target.result;
-            img.style.display = 'block';
-            document.getElementById('placeholderText').style.display = 'none';
-            gameState.tempPhoto = e.target.result;
-
-            img.onload = async function() {
-                if (!cocoModel) {
-                    showCustomAlert("⚠️ Attenzione", "Caricamento AI in corso, attendi un secondo!");
-                    return;
-                }
-
-                const predictions = await cocoModel.detect(img);
-                const isBike = predictions.some(pred => 
-                    (pred.class === 'motorcycle' || pred.class === 'bicycle') && pred.score > 0.35
-                );
-
-                if (isBike) {
-                    isPhotoVerified = true;
-                    saveBtn.disabled = false;
-                    saveBtn.innerText = "💾 Salva nel Garage";
-                    aiStatusText.innerText = "✅ MOTO RICONOSCIUTA! Puoi salvare.";
-                    aiStatusText.style.color = "var(--success)";
-                } else {
-                    isPhotoVerified = false;
-                    saveBtn.disabled = true;
-                    saveBtn.innerText = "❌ Non è una Moto";
-                    aiStatusText.innerText = "❌ ERRORE: Questa non è una moto!";
-                    aiStatusText.style.color = "var(--danger)";
-                    showCustomAlert("🚫 Oggetto Errato", "La foto non raffigura una moto o uno scooter. Riprova scattando ad una moto vera!");
-                }
-            };
-        };
-        reader.readAsDataURL(file);
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('bikeImage');
+                img.src = e.target.result;
+                img.style.display = 'block';
+                document.getElementById('placeholderText').style.display = 'none';
+                gameState.tempPhoto = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
     });
 
     function saveBike() {
-        if (!gameState.tempPhoto || !isPhotoVerified) {
-            showCustomAlert("⚠️ Errore", "Scatta una foto ad una MOTO valida prima di salvare!");
+        if (!gameState.tempPhoto) {
+            alert("⚠️ Scatta una foto alla moto prima di salvare!");
             return;
         }
 
@@ -804,14 +723,11 @@
 
         gameState.savedBikes.push(newBike);
         gameState.tempPhoto = null;
-        isPhotoVerified = false;
-
         document.getElementById('bikeImage').style.display = 'none';
         document.getElementById('placeholderText').style.display = 'block';
         document.getElementById('bikeBrandInput').value = "Mia Moto";
-        document.getElementById('saveBikeBtn').disabled = true;
         
-        showCustomAlert("💾 Perfetto!", "Motorino salvato con successo nel Garage!");
+        alert("Motorino salvato nel Garage!");
         updateUI();
     }
 
@@ -827,16 +743,16 @@
                 uniqueKey: Date.now() + Math.random() 
             });
             updateUI();
-            showCustomAlert("🛒 Acquisto Effettuato", `Hai comprato: ${item.name}`);
+            alert(`Acquistato: ${item.name}`);
         } else {
-            showCustomAlert("❌ Errore", "Fondi insufficienti!");
+            alert("Fondi insufficienti!");
         }
     }
 
     /* SELEZIONE MOTO E GARA */
     function openRaceBikeSelection(reqSpeed, reward) {
         if (gameState.savedBikes.length === 0) {
-            showCustomAlert("⚠️ Nessuna Moto", "Non hai moto nel Garage! Creane e salvane una prima di gareggiare.");
+            alert("⚠️ Non hai moto nel Garage! Creane e salvane una prima di gareggiare.");
             return;
         }
 
@@ -863,7 +779,7 @@
     function confirmRaceStart() {
         const bikeId = document.getElementById('raceBikeSelect').value;
         if (!bikeId) {
-            showCustomAlert("⚠️ Attenzione", "Seleziona una moto dal menu prima di gareggiare!");
+            alert("Seleziona una moto dal menu prima di gareggiare!");
             return;
         }
 
@@ -875,9 +791,9 @@
 
         if (maxSpeed >= currentSelectedRace.reqSpeed) {
             gameState.money += currentSelectedRace.reward;
-            showCustomAlert("🏆 VITTORIA!", `Con la tua ${bike.brand} (${maxSpeed} km/h) hai vinto la sfida!\nPremio incassato: +${currentSelectedRace.reward} €`);
+            alert(`🏆 VITTORIA! Con la tua ${bike.brand} (${maxSpeed} km/h) hai vinto la sfida!\nPremio incassato: +${currentSelectedRace.reward} €`);
         } else {
-            showCustomAlert("❌ SCONFITTA", `La tua ${bike.brand} (${maxSpeed} km/h) non è abbastanza veloce per questa gara (richiesti almeno ${currentSelectedRace.reqSpeed} km/h). Elaborala nell'Officina!`);
+            alert(`❌ SCONFITTA! La tua ${bike.brand} (${maxSpeed} km/h) non è abbastanza veloce per questa gara (richiesti almeno ${currentSelectedRace.reqSpeed} km/h). Elaborala nell'Officina!`);
         }
         updateUI();
     }
@@ -1084,7 +1000,7 @@
             document.getElementById('connectionStatus').className = 'status-badge status-offline';
             
             navigator.clipboard.writeText(link).then(() => {
-                showCustomAlert("🔗 Stanza Creata", "Link copiato negli appunti!");
+                alert("Link della stanza copiato negli appunti!");
             });
         });
 
