@@ -362,7 +362,7 @@
 <div class="app-container">
     <header>
         <h1>🏍️ Moto Garage & Officina</h1>
-        <div class="wallet" id="moneyDisplay">💰 1.200 €</div>
+        <div class="wallet" id="moneyDisplay">💰 0 €</div>
     </header>
 
     <div class="content">
@@ -527,7 +527,7 @@
 
 <script>
     let gameState = {
-        money: 1200,
+        money: 0, // Partenza con 0 euro
         savedBikes: [],
         inventory: [],
         activeBikeId: null,
@@ -615,7 +615,7 @@
         if (savedData) {
             try {
                 const parsed = JSON.parse(savedData);
-                gameState.money = parsed.money ?? 1200;
+                gameState.money = parsed.money ?? 0; // Se non esiste nei vecchi salvataggi, mette 0
                 gameState.savedBikes = parsed.savedBikes ?? [];
                 gameState.inventory = parsed.inventory ?? [];
                 gameState.activeBikeId = parsed.activeBikeId ?? null;
