@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moto Garage & Officina Multiplayer</title>
+    <!-- PeerJS per Multiplayer -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --text-color: #f8fafc;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --border: #334155;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 92vh;
+            max-height: 900px;
+            border: 1px solid var(--border);
+        }
+        header {
+            background: #090d16;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+        h1 { font-size: 1.1rem; margin: 0; color: var(--accent); }
+        .wallet {
+            background: #0f172a;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: var(--success);
+            border: 1px solid #1e3a8a;
+            font-size: 0.9rem;
+        }
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .btn {
+            background: var(--accent);
+            color: #0f172a;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: 0.2s;
+            font-size: 0.95rem;
+        }
+        .btn:hover { background: var(--accent-hover); }
+        .btn:disabled { background: #475569; cursor: not-allowed; }
+
+        .bike-preview {
+            width: 100%;
+            height: 200px;
+            background: #0f172a;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px dashed #475569;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .bike-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        .bike-preview span { color: #94a3b8; font-size: 0.85rem; text-align: center; padding: 0 10px; }
+        
+        .stats-box {
+            background: #090d16;
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border);
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            align-items: center;
+        }
+        .stat-row input, .stat-row select {
+            background: #1e293b;
+            border: 1px solid #475569;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            width: 58%;
+        }
+        
+        .saved-bikes-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .saved-bike-card {
+            background: #090d16;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .saved-bike-card img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+        }
+        .saved-bike-info {
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .saved-bike-info span { font-size: 0.8rem; font-weight: bold; }
+        .saved-bike-info .speed-tag { font-size: 0.75rem; color: var(--accent); }
+        .edit-btn {
+            background: #334155;
+            color: white;
+            border: none;
+            padding: 5px 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+        .edit-btn:hover { background: var(--accent); color: #0f172a; }
+
+        .shop-category-title {
+            color: var(--accent);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 15px 0 8px 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 4px;
+        }
+
+        .item-card, .inventory-card {
+            background: #090d16;
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--border);
+        }
+        .item-info h4, .inventory-info h4 { margin: 0 0 3px 0; font-size: 0.95rem; }
+        .item-info p, .inventory-info p { margin: 0; font-size: 0.75rem; color: #94a3b8; }
+        
+        #tab-workshop { background: #1e293b; }
+        .workshop-image-box {
+            width: 100%;
+            height: 220px;
+            background: #090d16;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #475569;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .workshop-image-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .slot-box {
+            background: #090d16;
+            border: 1px solid #475569;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .slot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .dropdown-content {
+            display: none;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #334155;
+        }
+        .dropdown-content.open { display: block !important; }
+        .part-option {
+            background: #1e293b;
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        /* TESTER E TACHIMETRO REALISTICO */
+        .tester-container {
+            background: #090d16;
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .speedometer {
+            font-size: 3.2rem;
+            font-weight: bold;
+            color: var(--accent);
+            margin: 5px 0 0 0;
+            font-family: monospace;
+        }
+        .timer-display {
+            font-size: 1.2rem;
+            color: #f59e0b;
+            font-family: monospace;
+            margin-bottom: 15px;
+        }
+        .tester-bike-img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #475569;
+        }
+
+        .multiplayer-box {
+            background: #090d16;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--accent);
+            margin-bottom: 20px;
+        }
+
+        .link-container {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .link-input {
+            flex: 1;
+            background: #1e293b;
+            border: 1px solid #475569;
+            color: #38bdf8;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .status-offline { background: #475569; color: white; }
+        .status-online { background: var(--success); color: #0f172a; }
+
+        nav {
+            display: flex;
+            background: #090d16;
+            border-top: 1px solid var(--border);
+        }
+        .nav-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            padding: 10px 0;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+        }
+        .nav-btn .nav-icon { font-size: 1.2rem; }
+        .nav-btn .nav-text { display: none; font-size: 0.7rem; }
+        .nav-btn.active { 
+            color: var(--accent); 
+            background: rgba(56, 189, 248, 0.05); 
+        }
+        .nav-btn.active .nav-text { display: block; font-weight: bold; }
+
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <h1>🏍️ Moto Garage & Officina</h1>
+        <div class="wallet" id="moneyDisplay">💰 1.200 €</div>
+    </header>
+
+    <div class="content">
+        <!-- GARAGE -->
+        <div id="tab-garage" class="tab-content active">
+            <h3>Aggiungi Nuova Moto</h3>
+            <div class="bike-preview" id="bikePreviewBox">
+                <span id="placeholderText">Carica la foto della moto o dello scooter</span>
+                <img id="bikeImage" src="" alt="Moto">
+            </div>
+            
+            <label class="btn" style="display:block; text-align:center; box-sizing: border-box;">
+                📸 Carica Foto
+                <input type="file" id="cameraInput" accept="image/*">
+            </label>
+
+            <div class="stats-box" style="margin-top: 12px;">
+                <div class="stat-row">
+                    <span>Name:</span> 
+                    <input type="text" id="bikeBrandInput" placeholder="Name" value="Name">
+                </div>
+                <div class="stat-row">
+                    <span>Categoria:</span>
+                    <select id="model3dSelect">
+                        <option value="scooter">Scooter 50cc (Originale - 48 km/h)</option>
+                        <option value="sportbike">Moto 125cc (Originale - 110 km/h)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn" style="background: var(--success); color: white;" onclick="saveBike()">💾 Salva nel Garage</button>
+
+            <h3 style="margin-top: 20px;">Le tue Moto Salvate</h3>
+            <div class="saved-bikes-grid" id="savedBikesGrid"></div>
+        </div>
+
+        <!-- NEGOZIO -->
+        <div id="tab-shop" class="tab-content">
+            <button class="btn" id="returnToWorkshopBtn" style="display:none; background: var(--accent); color: #0f172a; margin-bottom: 15px;" onclick="goToWorkshopFromShop()">🔧 Torna Subito all'Officina</button>
+            
+            <h3>Negozio Ricambi Elaborazione</h3>
+            <div id="shopList"></div>
+        </div>
+
+        <!-- INVENTARIO -->
+        <div id="tab-inventory" class="tab-content">
+            <h3>Il tuo Inventario</h3>
+            <div id="inventoryList"></div>
+        </div>
+
+        <!-- TESTER ACCELERAZIONE REALE -->
+        <div id="tab-tester" class="tab-content">
+            <h3>⏱️ Prova Accelerazione Reale</h3>
+            <p style="font-size: 0.8rem; color: #94a3b8; margin-top: -5px;">Spunto immediato allo scatto, poi allungo progressivo fino al limite!</p>
+            
+            <div class="stats-box">
+                <div class="stat-row">
+                    <span>Scegli Moto:</span>
+                    <select id="testerBikeSelect" onchange="updateTesterView()">
+                        <option value="">-- Seleziona Moto --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="tester-container" id="testerDisplayArea" style="display: none;">
+                <img id="testerBikeImg" class="tester-bike-img" src="" alt="Moto">
+                <h4 id="testerBikeName" style="margin: 0; color: white;">-</h4>
+                <p id="testerBikePowerText" style="font-size: 0.85rem; color: var(--accent); margin: 4px 0;"></p>
+                
+                <div class="speedometer"><span id="speedDisplay">0</span> <span style="font-size: 1.2rem;">km/h</span></div>
+                <div class="timer-display">⏱️ <span id="timerDisplay">0.00</span> s</div>
+
+                <button class="btn" id="startTestBtn" style="background: var(--success); color: white;" onclick="runSpeedTest()">🚀 Spalanca il Gas al Massimo</button>
+                <div id="testResultText" style="margin-top: 10px; font-size: 0.85rem; font-weight: bold; color: var(--accent);"></div>
+            </div>
+        </div>
+
+        <!-- OFFICINA WORKSHOP -->
+        <div id="tab-workshop" class="tab-content">
+            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                <button class="btn" style="background:#334155; color:white; margin:0; padding:8px;" onclick="switchTab('garage', document.querySelectorAll('.nav-btn')[0])">⬅ Garage</button>
+                <button class="btn" style="background: var(--success); color:white; margin:0; padding:8px;" onclick="goToShopFromWorkshop()">🛒 Vai al Negozio Ricambi</button>
+            </div>
+
+            <h3 id="workshopTitle">Officina Visualizzatore</h3>
+            
+            <div style="background:#090d16; padding:12px; border-radius:10px; margin-bottom:15px; text-align:center;">
+                <div class="workshop-image-box">
+                    <img id="workshopBikeImage" src="" alt="Foto Moto">
+                </div>
+                <strong id="workshopBikeName">Seleziona una moto</strong>
+                <div id="workshopBikeSpeed" style="font-size: 0.85rem; color: var(--accent); margin-top: 4px;"></div>
+            </div>
+
+            <h4>Pezzi Installati:</h4>
+            <div id="installedPartsSlots"></div>
+        </div>
+
+        <!-- GARE -->
+        <div id="tab-races" class="tab-content">
+            <h3>Pista & Sfide</h3>
+            
+            <div class="multiplayer-box">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h4 style="margin: 0; color: var(--accent);">🏁 Sfida Online 1v1</h4>
+                    <span id="connectionStatus" class="status-badge status-offline">Offline</span>
+                </div>
+                <p style="font-size: 0.75rem; color: #94a3b8; margin: 5px 0 10px 0;">Invia il link al tuo amico per gareggiare in tempo reale!</p>
+                
+                <button class="btn" id="generateBtn" style="margin-top:0;" onclick="createLiveLobby()">🔗 Genera e Copia Link Stanza</button>
+                
+                <div class="link-container" id="linkBox" style="display: none;">
+                    <input type="text" class="link-input" id="inviteLinkInput" readonly>
+                </div>
+            </div>
+
+            <h4>Modalità Singleplayer</h4>
+            <div id="raceList"></div>
+        </div>
+    </div>
+
+    <nav>
+        <button class="nav-btn active" onclick="switchTab('garage', this)">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-text">Garage</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('shop', this)">
+            <span class="nav-icon">🛒</span>
+            <span class="nav-text">Negozio</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('inventory', this)">
+            <span class="nav-icon">🎒</span>
+            <span class="nav-text">Inventario</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('tester', this)">
+            <span class="nav-icon">⏱️</span>
+            <span class="nav-text">Tester</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('races', this)">
+            <span class="nav-icon">🏁</span>
+            <span class="nav-text">Gare</span>
+        </button>
+    </nav>
+</div>
+
+<script>
+    let gameState = {
+        money: 3500,
+        savedBikes: [],
+        inventory: [],
+        activeBikeId: null,
+        tempPhoto: null
+    };
+
+    let peer = null;
+    let peerConn = null;
+    let testInterval = null;
+
+    // Pezzi per la modifica dell'accelerazione e della velocità massima
+    const shopItems = [
+        { id: 'gruppo', category: 'Gruppi Termici', name: 'Gruppo Termico 70cc Base Ghisa', desc: 'Forte spinta iniziale', price: 160, accelMult: 1.4, maxSpeedBonus: 15 },
+        { id: 'gruppo', category: 'Gruppi Termici', name: 'Gruppo Termico 70cc Racing Alluminio', desc: 'Scatto cattivo e più allungo', price: 320, accelMult: 1.8, maxSpeedBonus: 28 },
+        { id: 'gruppo', category: 'Gruppi Termici', name: 'Gruppo Termico 80cc Big Bore', desc: 'Coppia impressionante', price: 450, accelMult: 2.3, maxSpeedBonus: 38 },
+        { id: 'carburatore', category: 'Carburatori', name: 'Carburatore 17.5mm DellOrto', desc: 'Risposta del gas immediata', price: 85, accelMult: 1.15, maxSpeedBonus: 5 },
+        { id: 'carburatore', category: 'Carburatori', name: 'Carburatore 19mm Black Edition', desc: 'Erogazione fluida e veloce', price: 110, accelMult: 1.25, maxSpeedBonus: 8 },
+        { id: 'marmitta', category: 'Scarico', name: 'Marmitta ad Espansione Racing', desc: 'Rende i medi ed alti regimi più potenti', price: 280, accelMult: 1.35, maxSpeedBonus: 18 },
+        { id: 'variatore', category: 'Trasmissione', name: 'Variatore Sportivo e Frizione', desc: 'Elimina buchi e garantisce partenza immediata', price: 130, accelMult: 1.3, maxSpeedBonus: 5 }
+    ];
+
+    const engineCategories = [
+        { key: 'gruppo', label: 'Cilindro e Pistone (Gruppo Termico)' },
+        { key: 'carburatore', label: 'Carburatore' },
+        { key: 'marmitta', label: 'Marmitta ad Espansione' },
+        { key: 'variatore', label: 'Variatore & Trasmissione' }
+    ];
+
+    const publicRaces = [
+        { id: 1, name: 'Gara Sprint Semafaro (0-50 km/h)', desc: 'Chi ha più spunto iniziale vince', reward: 250, reqSpeed: 55 },
+        { id: 2, name: 'Rettilineo di Prova (1 Km)', desc: 'Serve accelerazione e grande velocità finale', reward: 1200, reqSpeed: 85 }
+    ];
+
+    function calculateBikeMaxSpeed(bike) {
+        let baseSpeed = bike.modelType === 'sportbike' ? 110 : 48; // Motorino 50cc di serie fa circa 48 km/h
+        let bonus = 0;
+        if (bike.parts) {
+            Object.keys(bike.parts).forEach(key => {
+                const part = bike.parts[key];
+                if (part && part.maxSpeedBonus) bonus += part.maxSpeedBonus;
+            });
+        }
+        return baseSpeed + bonus;
+    }
+
+    function calculateBikeAccelMult(bike) {
+        let mult = 1.0;
+        if (bike.parts) {
+            Object.keys(bike.parts).forEach(key => {
+                const part = bike.parts[key];
+                if (part && part.accelMult) mult *= part.accelMult;
+            });
+        }
+        return mult;
+    }
+
+    function updateUI() {
+        document.getElementById('moneyDisplay').innerText = `💰 ${gameState.money} €`;
+
+        let gridHtml = '';
+        if (gameState.savedBikes.length === 0) {
+            gridHtml = `<p style="color:#94a3b8; font-size:0.85rem; grid-column: span 2;">Nessuna moto salvata.</p>`;
+        } else {
+            gameState.savedBikes.forEach(bike => {
+                const speed = calculateBikeMaxSpeed(bike);
+                gridHtml += `
+                    <div class="saved-bike-card">
+                        <img src="${bike.photo}" alt="Moto">
+                        <div class="saved-bike-info">
+                            <span>${bike.brand}</span>
+                            <span class="speed-tag">⚡ Vel. Max: ${speed} km/h</span>
+                            <button class="edit-btn" onclick="openWorkshop(${bike.id})">✏️ Officina</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        document.getElementById('savedBikesGrid').innerHTML = gridHtml;
+
+        let shopHtml = '';
+        let currentCat = '';
+        shopItems.forEach((item, index) => {
+            if (item.category !== currentCat) {
+                currentCat = item.category;
+                shopHtml += `<div class="shop-category-title">${currentCat}</div>`;
+            }
+            shopHtml += `
+                <div class="item-card">
+                    <div class="item-info">
+                        <h4>${item.name}</h4>
+                        <p>${item.desc} - <strong>${item.price} €</strong></p>
+                    </div>
+                    <button class="btn" style="width: auto; margin:0;" onclick="buyItem(${index})">Compra</button>
+                </div>
+            `;
+        });
+        document.getElementById('shopList').innerHTML = shopHtml;
+
+        let invHtml = '';
+        if (gameState.inventory.length === 0) {
+            invHtml = `<p style="color:#94a3b8; font-size:0.85rem;">Nessun pezzo in inventario.</p>`;
+        } else {
+            gameState.inventory.forEach((invItem) => {
+                invHtml += `
+                    <div class="inventory-card">
+                        <div class="inventory-info">
+                            <h4>${invItem.name}</h4>
+                            <p>Migliora scatto e velocità massima</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        document.getElementById('inventoryList').innerHTML = invHtml;
+
+        let raceHtml = '';
+        publicRaces.forEach(race => {
+            raceHtml += `
+                <div class="item-card">
+                    <div class="item-info">
+                        <h4>${race.name}</h4>
+                        <p>${race.desc}<br>Premio: <strong>+${race.reward} €</strong></p>
+                    </div>
+                    <button class="btn" style="width: auto; margin:0;" onclick="startSingleRace(${race.reqSpeed}, ${race.reward})">Gareggia</button>
+                </div>
+            `;
+        });
+        document.getElementById('raceList').innerHTML = raceHtml;
+
+        updateTesterOptions();
+        updateWorkshopUI();
+    }
+
+    function switchTab(tabName, btnElement) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById('tab-' + tabName).classList.add('active');
+        if (btnElement) btnElement.classList.add('active');
+
+        if (tabName !== 'shop' && tabName !== 'workshop') {
+            document.getElementById('returnToWorkshopBtn').style.display = 'none';
+        }
+    }
+
+    function goToShopFromWorkshop() {
+        switchTab('shop', document.querySelectorAll('.nav-btn')[1]);
+        document.getElementById('returnToWorkshopBtn').style.display = 'block';
+    }
+
+    function goToWorkshopFromShop() {
+        if (gameState.activeBikeId) {
+            switchTab('workshop', null);
+        } else {
+            switchTab('garage', document.querySelectorAll('.nav-btn')[0]);
+        }
+    }
+
+    document.getElementById('cameraInput').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('bikeImage');
+                img.src = e.target.result;
+                img.style.display = 'block';
+                document.getElementById('placeholderText').style.display = 'none';
+                gameState.tempPhoto = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    function saveBike() {
+        if (!gameState.tempPhoto) {
+            alert("⚠️ Per salvare devi prima caricare la foto del motorino!");
+            return;
+        }
+
+        const brand = document.getElementById('bikeBrandInput').value;
+        const modelType = document.getElementById('model3dSelect').value;
+
+        const initialParts = {};
+        engineCategories.forEach(cat => initialParts[cat.key] = null);
+
+        const newBike = {
+            id: Date.now(),
+            brand: brand,
+            modelType: modelType,
+            photo: gameState.tempPhoto,
+            parts: initialParts
+        };
+
+        gameState.savedBikes.push(newBike);
+        gameState.tempPhoto = null;
+        document.getElementById('bikeImage').style.display = 'none';
+        document.getElementById('placeholderText').style.display = 'block';
+        document.getElementById('bikeBrandInput').value = "Name";
+        
+        alert("Motorino salvato nel Garage!");
+        updateUI();
+    }
+
+    function buyItem(itemIndex) {
+        const item = shopItems[itemIndex];
+        if (gameState.money >= item.price) {
+            gameState.money -= item.price;
+            gameState.inventory.push({ 
+                id: item.id, 
+                name: item.name, 
+                accelMult: item.accelMult,
+                maxSpeedBonus: item.maxSpeedBonus,
+                uniqueKey: Date.now() + Math.random() 
+            });
+            updateUI();
+            alert(`Acquistato: ${item.name}`);
+        } else {
+            alert("Fondi insufficienti!");
+        }
+    }
+
+    // --- FISICA REALE ACCELERAZIONE MOTORINO ---
+    function updateTesterOptions() {
+        const select = document.getElementById('testerBikeSelect');
+        const currentVal = select.value;
+        select.innerHTML = `<option value="">-- Seleziona Moto --</option>`;
+        
+        gameState.savedBikes.forEach(bike => {
+            const opt = document.createElement('option');
+            opt.value = bike.id;
+            opt.innerText = `${bike.brand} (Vel. Max: ${calculateBikeMaxSpeed(bike)} km/h)`;
+            select.appendChild(opt);
+        });
+
+        if (currentVal) select.value = currentVal;
+    }
+
+    function updateTesterView() {
+        const bikeId = document.getElementById('testerBikeSelect').value;
+        const area = document.getElementById('testerDisplayArea');
+        if (!bikeId) {
+            area.style.display = 'none';
+            return;
+        }
+
+        const bike = gameState.savedBikes.find(b => b.id == bikeId);
+        if (bike) {
+            const maxSpeed = calculateBikeMaxSpeed(bike);
+            document.getElementById('testerBikeImg').src = bike.photo;
+            document.getElementById('testerBikeName').innerText = bike.brand;
+            document.getElementById('testerBikePowerText').innerText = `Velocità Max Stimata: ${maxSpeed} km/h`;
+            document.getElementById('speedDisplay').innerText = "0";
+            document.getElementById('timerDisplay').innerText = "0.00";
+            document.getElementById('testResultText').innerText = "";
+            area.style.display = 'block';
+        }
+    }
+
+    function runSpeedTest() {
+        const bikeId = document.getElementById('testerBikeSelect').value;
+        const bike = gameState.savedBikes.find(b => b.id == bikeId);
+        if (!bike) return;
+
+        if (testInterval) clearInterval(testInterval);
+
+        const maxSpeed = calculateBikeMaxSpeed(bike);
+        const accelMultiplier = calculateBikeAccelMult(bike);
+
+        let currentSpeed = 0.0;
+        let elapsedSeconds = 0.0;
+        let timeTo40 = null;
+        let timeToMax = null;
+
+        const dt = 0.03; // Passaggio temporale (30 ms)
+
+        document.getElementById('startTestBtn').disabled = true;
+        document.getElementById('testResultText').innerText = "🏍️ Spalancato! In accelerazione...";
+
+        testInterval = setInterval(() => {
+            elapsedSeconds += dt;
+
+            // FISICA REALE EROGAZIONE MOTORINO
+            let speedRatio = currentSpeed / maxSpeed;
+            let baseRate = 18.0 * accelMultiplier;
+            
+            let currentAccel = 0;
+            if (speedRatio < 0.65) {
+                currentAccel = baseRate;
+            } else if (speedRatio < 0.88) {
+                currentAccel = baseRate * (1.0 - (speedRatio - 0.65) * 2.2);
+            } else {
+                currentAccel = baseRate * 0.18 * Math.max(0.05, (1.0 - speedRatio));
+            }
+
+            currentSpeed += currentAccel * dt;
+
+            if (currentSpeed >= 40 && !timeTo40) {
+                timeTo40 = elapsedSeconds.toFixed(2);
+            }
+
+            if (currentSpeed >= (maxSpeed - 0.2) || elapsedSeconds >= 25.0) {
+                currentSpeed = maxSpeed;
+                timeToMax = elapsedSeconds.toFixed(2);
+                clearInterval(testInterval);
+                document.getElementById('startTestBtn').disabled = false;
+                
+                let resHtml = `🏁 Velocità Massima Raggiunta: <strong>${maxSpeed} km/h</strong> in <strong>${timeToMax}s</strong>`;
+                if (timeTo40) {
+                    resHtml += `<br>⚡ Da 0 a 40 km/h scattato in: <strong>${timeTo40} secondi</strong>!`;
+                }
+                document.getElementById('testResultText').innerHTML = resHtml;
+            }
+
+            document.getElementById('speedDisplay').innerText = Math.floor(currentSpeed);
+            document.getElementById('timerDisplay').innerText = elapsedSeconds.toFixed(2);
+        }, 30);
+    }
+
+    function openWorkshop(bikeId) {
+        gameState.activeBikeId = bikeId;
+        switchTab('workshop', null);
+        updateWorkshopUI();
+    }
+
+    function updateWorkshopUI() {
+        const bike = gameState.savedBikes.find(b => b.id === gameState.activeBikeId);
+        if (!bike) return;
+
+        const speed = calculateBikeMaxSpeed(bike);
+        document.getElementById('workshopBikeName').innerText = `${bike.brand}`;
+        document.getElementById('workshopBikeSpeed').innerText = `⚡ Velocità Max Attuale: ${speed} km/h`;
+        document.getElementById('workshopBikeImage').src = bike.photo;
+
+        let slotsHtml = '';
+        engineCategories.forEach(cat => {
+            const mountedPart = bike.parts[cat.key];
+            const compatibleParts = gameState.inventory.filter(i => i.id === cat.key);
+
+            let dropdownItemsHtml = '';
+            if (compatibleParts.length === 0) {
+                dropdownItemsHtml = `<p style="font-size:0.75rem; color:#94a3b8; margin:5px 0;">Nessun pezzo disponibile.</p>`;
+            } else {
+                compatibleParts.forEach(part => {
+                    dropdownItemsHtml += `
+                        <div class="part-option">
+                            <span>${part.name}</span>
+                            <button class="edit-btn" style="background:var(--success); color:white;" onclick="mountPart('${cat.key}', ${part.uniqueKey})">Monta</button>
+                        </div>
+                    `;
+                });
+            }
+
+            slotsHtml += `
+                <div class="slot-box">
+                    <div class="slot-header" onclick="toggleDropdown('${cat.key}')">
+                        <div>
+                            <strong style="font-size:0.85rem; display:block;">${cat.label}</strong>
+                            <span style="font-size:0.75rem; color:${mountedPart ? 'var(--success)' : '#94a3b8'};">
+                                ${mountedPart ? `${mountedPart.name}` : 'Pezzo originale'}
+                            </span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            ${mountedPart ? `<button class="edit-btn" style="background:var(--danger);" onclick="event.stopPropagation(); unequipPart('${cat.key}')">Smonta</button>` : ''}
+                            <span style="font-size:0.8rem; color:var(--accent);">▼ Scegli</span>
+                        </div>
+                    </div>
+                    <div class="dropdown-content" id="dropdown-${cat.key}">
+                        ${dropdownItemsHtml}
+                    </div>
+                </div>
+            `;
+        });
+        document.getElementById('installedPartsSlots').innerHTML = slotsHtml;
+    }
+
+    function toggleDropdown(key) {
+        const drop = document.getElementById(`dropdown-${key}`);
+        if (drop) {
+            drop.classList.toggle('open');
+        }
+    }
+
+    function mountPart(categoryKey, uniqueKey) {
+        const bike = gameState.savedBikes.find(b => b.id === gameState.activeBikeId);
+        if (bike.parts[categoryKey]) {
+            gameState.inventory.push(bike.parts[categoryKey]);
+        }
+
+        const partIndex = gameState.inventory.findIndex(i => i.uniqueKey === uniqueKey);
+        if (partIndex !== -1) {
+            const partToMount = gameState.inventory[partIndex];
+            bike.parts[categoryKey] = partToMount;
+            gameState.inventory.splice(partIndex, 1);
+            updateUI();
+        }
+    }
+
+    function unequipPart(categoryKey) {
+        const bike = gameState.savedBikes.find(b => b.id === gameState.activeBikeId);
+        const part = bike.parts[categoryKey];
+        if (part) {
+            gameState.inventory.push(part);
+            bike.parts[categoryKey] = null;
+            updateUI();
+        }
+    }
+
+    function startSingleRace(reqSpeed, reward) {
+        if (gameState.savedBikes.length === 0) {
+            alert("Devi prima aggiungere e selezionare un motorino dal Garage!");
+            return;
+        }
+
+        const currentBike = gameState.savedBikes[0];
+        const bikeSpeed = calculateBikeMaxSpeed(currentBike);
+
+        if (bikeSpeed >= reqSpeed) {
+            gameState.money += reward;
+            updateUI();
+            alert(`🏎️ Gara Vinta! Il tuo motorino (${bikeSpeed} km/h) è stato più veloce!\nHai guadagnato +${reward} €!`);
+        } else {
+            alert(`❌ Gara Persa! Il tuo motorino (${bikeSpeed} km/h) è troppo lento. Elaboralo in officina!`);
+        }
+    }
+
+    // --- MULTIPLAYER REALTIME ---
+    function initializePeer(onOpenCallback) {
+        if (peer) return;
+        peer = new Peer();
+
+        peer.on('open', id => {
+            document.getElementById('connectionStatus').innerText = "Online";
+            document.getElementById('connectionStatus').className = "status-badge status-online";
+            if (onOpenCallback) onOpenCallback(id);
+        });
+
+        peer.on('connection', conn => {
+            peerConn = conn;
+            setupConnection();
+        });
+
+        peer.on('error', err => {
+            console.error("Errore PeerJS:", err);
+            alert("Impossibile connettersi al server.");
+        });
+    }
+
+    function createLiveLobby() {
+        if (gameState.savedBikes.length === 0) {
+            alert("Crea e salva prima un motorino nel garage!");
+            return;
+        }
+
+        initializePeer((peerId) => {
+            const currentUrl = window.location.href.split('?')[0];
+            const inviteUrl = `${currentUrl}?lobby=${peerId}`;
+            
+            const input = document.getElementById('inviteLinkInput');
+            input.value = inviteUrl;
+            document.getElementById('linkBox').style.display = 'flex';
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(inviteUrl).then(() => {
+                    alert("📋 Link della stanza GENERATO e COPIATO negli appunti!");
+                }).catch(() => {
+                    alert("📋 Link GENERATO!");
+                });
+            } else {
+                alert("📋 Link GENERATO!");
+            }
+        });
+    }
+
+    function setupConnection() {
+        alert("🎮 Un amico si è connesso! Sfida imminente...");
+
+        peerConn.on('open', () => {
+            const currentBike = gameState.savedBikes[0];
+            const mySpeed = calculateBikeMaxSpeed(currentBike);
+
+            peerConn.send({ type: 'RACE_DATA', speed: mySpeed, brand: currentBike.brand });
+        });
+
+        peerConn.on('data', data => {
+            if (data.type === 'RACE_DATA') {
+                const currentBike = gameState.savedBikes[0];
+                const mySpeed = calculateBikeMaxSpeed(currentBike);
+
+                if (mySpeed > data.speed) {
+                    gameState.money += 300;
+                    updateUI();
+                    alert(`🏆 SFIDA VINTA!\n\nIl tuo motorino (${mySpeed} km/h) ha superato quello del tuo amico (${data.speed} km/h)!\nHai guadagnato +300 €!`);
+                } else if (mySpeed < data.speed) {
+                    alert(`❌ SFIDA PERSA!\n\nIl motorino del tuo amico (${data.speed} km/h) è stato più veloce del tuo (${mySpeed} km/h).`);
+                } else {
+                    alert(`🤝 PAREGGIO!\n\nAvete la stessa velocità massima (${mySpeed} km/h)!`);
+                }
+            }
+        });
+    }
+
+    window.addEventListener('load', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('lobby')) {
+            const lobbyId = urlParams.get('lobby');
+            switchTab('races', document.querySelectorAll('.nav-btn')[4]);
+
+            setTimeout(() => {
+                if (gameState.savedBikes.length === 0) {
+                    alert(`🚨 Sei entrato nella stanza di sfida!\n\nPer gareggiare, prima crea e salva un motorino nel Garage.`);
+                    return;
+                }
+
+                initializePeer(() => {
+                    peerConn = peer.connect(lobbyId);
+                    setupConnection();
+                });
+            }, 800);
+        }
+    });
+
+    updateUI();
+</script>
+
+</body>
+</html>
