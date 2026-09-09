@@ -382,7 +382,7 @@
             <div class="stats-box" style="margin-top: 12px;">
                 <div class="stat-row">
                     <span>Nome:</span> 
-                    <input type="text" id="bikeBrandInput" placeholder="Nome Moto" value="Mia Moto">
+                    <input type="text" id="bikeBrandInput" placeholder="Inserisci qualsiasi nome" value="La mia bestia">
                 </div>
                 <div class="stat-row">
                     <span>Categoria:</span>
@@ -538,7 +538,7 @@
     let peerConn = null;
     let testInterval = null;
     let currentSelectedRace = null;
-    let aiModel = null; // Modello di Intelligenza Artificiale
+    let aiModel = null; // Modello IA visivo
 
     const shopItems = [
         { id: 'gruppo', category: 'Gruppi Termici', name: 'Gruppo Termico 70cc Base Ghisa', desc: 'Forte spinta iniziale', price: 160, accelMult: 1.4, maxSpeedBonus: 15 },
@@ -562,13 +562,13 @@
         { id: 2, name: 'Rettilineo di Prova (1 Km)', desc: 'Serve accelerazione e grande velocità finale', reward: 1200, reqSpeed: 85 }
     ];
 
-    // Caricamento del modello IA locale all'avvio
+    // Caricamento del modello di IA visiva all'avvio
     async function loadAIModel() {
         try {
             aiModel = await mobilenet.load();
-            console.log("Modello IA visivo caricato correttamente!");
+            console.log("IA visiva pronta per il controllo foto!");
         } catch (error) {
-            console.error("Errore caricamento IA:", error);
+            console.error("Errore nel caricamento dell'IA:", error);
         }
     }
 
@@ -712,31 +712,32 @@
         }
     });
 
-    // Funzione di salvataggio con controllo visivo IA (blocca cani, oggetti o foto non inerenti)
+    // Funzione di salvataggio: nome libero, ma verifica obbligatoria della foto tramite IA
     async function saveBike() {
         if (!gameState.tempPhoto) {
-            alert("⚠️ Scatta o seleziona una foto della moto prima di salvare!");
+            alert("⚠️ Scatta o seleziona una foto prima di salvare!");
             return;
         }
 
-        const brand = document.getElementById('bikeBrandInput').value || "Mia Moto";
+        const brand = document.getElementById('bikeBrandInput').value.trim() || "Il mio motorino";
 
         if (!aiModel) {
-            alert("⏳ L'Intelligenza Artificiale si sta ancora avviando. Attendi qualche istante e riprova.");
+            alert("⏳ L'intelligenza artificiale si sta ancora caricando. Attendi un secondo e riprova.");
             return;
         }
 
-        // Creazione elemento immagine temporaneo per l'analisi visiva
+        // Creiamo un elemento immagine invisibile per passare i pixel all'IA
         const imgElement = document.createElement('img');
         imgElement.src = gameState.tempPhoto;
         await new Promise((resolve) => {
             imgElement.onload = resolve;
         });
 
-        // Analisi IA dei pixel dell'immagine
+        // L'IA riconosce cosa c'è nella foto
         const predictions = await aiModel.classify(imgElement);
-        console.log("Risultati IA:", predictions);
+        console.log("Analisi IA della foto:", predictions);
 
+        // Termini accettati dall'IA per considerare valida la foto di una moto/motorino
         const validBikeClasses = ['motorcycle', 'moped', 'motor scooter', 'bicycle', 'tricycle', 'minibike'];
         let isMotorbike = false;
 
@@ -749,8 +750,9 @@
             });
         });
 
+        // Se l'IA non rileva un veicolo a due ruote (es. rileva un cane, una tastiera o altro)
         if (!isMotorbike) {
-            alert("❌ Controllo IA fallito: L'intelligenza artificiale ha esaminato la foto e ha rilevato un cane, un oggetto o un soggetto non valido. Puoi salvare nel garage solo foto di moto o motorini!");
+            alert("❌ Foto non valida: L'intelligenza artificiale ha esaminato l'immagine e non ha trovato alcuna moto o motorino (ha riconosciuto un altro oggetto/animale). Puoi salvare solo foto di moto!");
             return;
         }
 
@@ -771,9 +773,9 @@
         gameState.tempPhoto = null;
         document.getElementById('bikeImage').style.display = 'none';
         document.getElementById('placeholderText').style.display = 'block';
-        document.getElementById('bikeBrandInput').value = "Mia Moto";
+        document.getElementById('bikeBrandInput').value = "La mia bestia";
         
-        alert("✅ IA Approvata: Motorino riconosciuto correttamente e salvato nel Garage!");
+        alert("✅ Controllo IA superato: Moto riconosciuta nella foto e salvata nel Garage!");
         updateUI();
     }
 
@@ -1068,7 +1070,7 @@
     window.onload = async () => {
         updateUI();
         initPeerJS();
-        await loadAIModel(); // Inizializza l'intelligenza artificiale all'avvio
+        await loadAIModel(); // Avvia l'intelligenza artificiale all'avvio
     };
 </script>
 </body>
