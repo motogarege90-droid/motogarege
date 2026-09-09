@@ -40,6 +40,7 @@
             display: flex;
             flex-direction: column;
             border: none;
+            position: relative;
         }
         header {
             background: #090d16;
@@ -306,25 +307,26 @@
         .status-offline { background: #475569; color: white; }
         .status-online { background: var(--success); color: #0f172a; }
 
-        /* MODALE SELEZIONE MOTO */
+        /* MODALE DI NOTIFICA E SELEZIONE (Sostituisce gli alert del browser) */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0;
             width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            z-index: 2000;
         }
         .modal-card {
             background: #1e293b;
             border: 1px solid var(--accent);
             border-radius: 12px;
             padding: 20px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            width: 85%;
+            max-width: 380px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.8);
+            text-align: center;
         }
 
         nav {
@@ -484,18 +486,27 @@
         </div>
     </div>
 
+    <!-- POPUP MESSAGGI PERSONALIZZATO (NESSUN INDIRIZZO URL BROWSER) -->
+    <div id="msgModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 id="msgTitle" style="margin-top: 0; color: var(--accent);">Messaggio</h3>
+            <p id="msgText" style="font-size: 0.9rem; color: white; margin: 15px 0;"></p>
+            <button class="btn" style="background: var(--accent); color: #0f172a; margin-top: 10px;" onclick="closeMsgModal()">OK</button>
+        </div>
+    </div>
+
     <!-- MODALE SELEZIONE MOTO PER GARA -->
     <div id="raceBikeModal" class="modal-overlay">
         <div class="modal-card">
             <h3 style="margin-top: 0; color: var(--accent);">Scegli la tua Moto</h3>
-            <p style="font-size: 0.85rem; color: #94a3b8;">Seleziona la moto con cui disputare la gara:</p>
+            <p style="font-size: 0.85rem; color: #94a3b8; text-align: left;">Seleziona la moto con cui disputare la gara:</p>
             <div class="stat-row">
                 <select id="raceBikeSelect" style="width: 100%; padding: 10px; margin-bottom: 15px;">
                     <option value="">-- Seleziona una Moto --</option>
                 </select>
             </div>
             <div style="display: flex; gap: 10px;">
-                <button class="btn" style="background: var(--success); color: white; margin-top:0;" onclick="confirmRaceStart()">🚦 Partecipa alla Gara</button>
+                <button class="btn" style="background: var(--success); color: white; margin-top:0;" onclick="confirmRaceStart()">🚦 Partecipa</button>
                 <button class="btn" style="background: var(--danger); color: white; margin-top:0;" onclick="closeRaceModal()">Annulla</button>
             </div>
         </div>
@@ -538,6 +549,17 @@
     let peerConn = null;
     let testInterval = null;
     let currentSelectedRace = null;
+
+    // Sostituto degli alert del browser (ZERO indirizzi URL visibili)
+    function showCustomAlert(title, text) {
+        document.getElementById('msgTitle').innerText = title;
+        document.getElementById('msgText').innerText = text;
+        document.getElementById('msgModal').style.display = 'flex';
+    }
+
+    function closeMsgModal() {
+        document.getElementById('msgModal').style.display = 'none';
+    }
 
     const shopItems = [
         { id: 'gruppo', category: 'Gruppi Termici', name: 'Gruppo Termico 70cc Base Ghisa', desc: 'Forte spinta iniziale', price: 160, accelMult: 1.4, maxSpeedBonus: 15 },
@@ -703,7 +725,7 @@
 
     function saveBike() {
         if (!gameState.tempPhoto) {
-            alert("⚠️ Scatta una foto alla moto prima di salvare!");
+            showCustomAlert("⚠️ Attenzione", "Scatta una foto alla moto prima di salvare!");
             return;
         }
 
@@ -727,7 +749,7 @@
         document.getElementById('placeholderText').style.display = 'block';
         document.getElementById('bikeBrandInput').value = "Mia Moto";
         
-        alert("Motorino salvato nel Garage!");
+        showCustomAlert("💾 Perfetto!", "Motorino salvato con successo nel Garage!");
         updateUI();
     }
 
@@ -743,16 +765,16 @@
                 uniqueKey: Date.now() + Math.random() 
             });
             updateUI();
-            alert(`Acquistato: ${item.name}`);
+            showCustomAlert("🛒 Acquisto Effettuato", `Hai comprato: ${item.name}`);
         } else {
-            alert("Fondi insufficienti!");
+            showCustomAlert("❌ Errore", "Fondi insufficienti!");
         }
     }
 
     /* SELEZIONE MOTO E GARA */
     function openRaceBikeSelection(reqSpeed, reward) {
         if (gameState.savedBikes.length === 0) {
-            alert("⚠️ Non hai moto nel Garage! Creane e salvane una prima di gareggiare.");
+            showCustomAlert("⚠️ Nessuna Moto", "Non hai moto nel Garage! Creane e salvane una prima di gareggiare.");
             return;
         }
 
@@ -779,7 +801,7 @@
     function confirmRaceStart() {
         const bikeId = document.getElementById('raceBikeSelect').value;
         if (!bikeId) {
-            alert("Seleziona una moto dal menu prima di gareggiare!");
+            showCustomAlert("⚠️ Attenzione", "Seleziona una moto dal menu prima di gareggiare!");
             return;
         }
 
@@ -791,9 +813,9 @@
 
         if (maxSpeed >= currentSelectedRace.reqSpeed) {
             gameState.money += currentSelectedRace.reward;
-            alert(`🏆 VITTORIA! Con la tua ${bike.brand} (${maxSpeed} km/h) hai vinto la sfida!\nPremio incassato: +${currentSelectedRace.reward} €`);
+            showCustomAlert("🏆 VITTORIA!", `Con la tua ${bike.brand} (${maxSpeed} km/h) hai vinto la sfida!\nPremio incassato: +${currentSelectedRace.reward} €`);
         } else {
-            alert(`❌ SCONFITTA! La tua ${bike.brand} (${maxSpeed} km/h) non è abbastanza veloce per questa gara (richiesti almeno ${currentSelectedRace.reqSpeed} km/h). Elaborala nell'Officina!`);
+            showCustomAlert("❌ SCONFITTA", `La tua ${bike.brand} (${maxSpeed} km/h) non è abbastanza veloce per questa gara (richiesti almeno ${currentSelectedRace.reqSpeed} km/h). Elaborala nell'Officina!`);
         }
         updateUI();
     }
@@ -1000,7 +1022,7 @@
             document.getElementById('connectionStatus').className = 'status-badge status-offline';
             
             navigator.clipboard.writeText(link).then(() => {
-                alert("Link della stanza copiato negli appunti!");
+                showCustomAlert("🔗 Stanza Creata", "Link copiato negli appunti!");
             });
         });
 
