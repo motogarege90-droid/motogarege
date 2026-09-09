@@ -562,6 +562,32 @@
         { id: 2, name: 'Rettilineo di Prova (1 Km)', desc: 'Serve accelerazione e grande velocità finale', reward: 1200, reqSpeed: 85 }
     ];
 
+    // Salva automaticamente i dati nel browser
+    function saveGameToStorage() {
+        localStorage.setItem('motoGameState', JSON.stringify({
+            money: gameState.money,
+            savedBikes: gameState.savedBikes,
+            inventory: gameState.inventory,
+            activeBikeId: gameState.activeBikeId
+        }));
+    }
+
+    // Carica i dati salvati dal browser all'avvio
+    function loadGameFromStorage() {
+        const savedData = localStorage.getItem('motoGameState');
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData);
+                gameState.money = parsed.money ?? 1200;
+                gameState.savedBikes = parsed.savedBikes ?? [];
+                gameState.inventory = parsed.inventory ?? [];
+                gameState.activeBikeId = parsed.activeBikeId ?? null;
+            } catch (e) {
+                console.error("Errore nel caricamento dei dati salvati:", e);
+            }
+        }
+    }
+
     // Caricamento del modello di IA visiva all'avvio
     async function loadAIModel() {
         try {
@@ -670,6 +696,7 @@
 
         updateTesterOptions();
         updateWorkshopUI();
+        saveGameToStorage(); // Salva ogni volta che l'interfaccia si aggiorna
     }
 
     function switchTab(tabName, btnElement) {
@@ -712,32 +739,29 @@
         }
     });
 
-    // Funzione di salvataggio: nome libero, ma verifica obbligatoria della foto tramite IA
+    // Funzione di salvataggio moto con controllo IA
     async function saveBike() {
         if (!gameState.tempPhoto) {
             alert("⚠️ Scatta o seleziona una foto prima di salvare!");
             return;
         }
 
-        const brand = document.getElementById('bikeBrandInput').value.trim() || "Il mio motorino";
+        const brand = document.getElementById('bikeBrandInput').value.trim() || "La mia bestia";
 
         if (!aiModel) {
             alert("⏳ L'intelligenza artificiale si sta ancora caricando. Attendi un secondo e riprova.");
             return;
         }
 
-        // Creiamo un elemento immagine invisibile per passare i pixel all'IA
         const imgElement = document.createElement('img');
         imgElement.src = gameState.tempPhoto;
         await new Promise((resolve) => {
             imgElement.onload = resolve;
         });
 
-        // L'IA riconosce cosa c'è nella foto
         const predictions = await aiModel.classify(imgElement);
         console.log("Analisi IA della foto:", predictions);
 
-        // Termini accettati dall'IA per considerare valida la foto di una moto/motorino
         const validBikeClasses = ['motorcycle', 'moped', 'motor scooter', 'bicycle', 'tricycle', 'minibike'];
         let isMotorbike = false;
 
@@ -750,9 +774,8 @@
             });
         });
 
-        // Se l'IA non rileva un veicolo a due ruote (es. rileva un cane, una tastiera o altro)
         if (!isMotorbike) {
-            alert("❌ Foto non valida: L'intelligenza artificiale ha esaminato l'immagine e non ha trovato alcuna moto o motorino (ha riconosciuto un altro oggetto/animale). Puoi salvare solo foto di moto!");
+            alert("❌ Foto non valida: L'intelligenza artificiale ha esaminato l'immagine e non ha trovato alcuna moto o motorino. Puoi salvare solo foto di moto!");
             return;
         }
 
@@ -1068,9 +1091,10 @@
     }
 
     window.onload = async () => {
+        loadGameFromStorage(); // Carica i progressi salvati in precedenza
         updateUI();
         initPeerJS();
-        await loadAIModel(); // Avvia l'intelligenza artificiale all'avvio
+        await loadAIModel(); // Carica l'IA visiva
     };
 </script>
 </body>
