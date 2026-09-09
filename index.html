@@ -241,7 +241,7 @@
             font-size: 0.85rem;
         }
 
-        /* TESTER E TACHIMETRO REALISTICO */
+        /* TESTER E TACHIMETRO */
         .tester-container {
             background: #090d16;
             border: 1px solid var(--accent);
@@ -307,7 +307,7 @@
         .status-offline { background: #475569; color: white; }
         .status-online { background: var(--success); color: #0f172a; }
 
-        /* MODALE DI NOTIFICA E SELEZIONE (Sostituisce gli alert del browser) */
+        /* MODALI PERSONALIZZATI */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0;
@@ -378,7 +378,8 @@
             
             <label class="btn" style="display:block; text-align:center; box-sizing: border-box;">
                 📸 Scatta Foto Fotocamera
-                <input type="file" id="cameraInput" accept="image/*" capture="environment">
+                <!-- capture="camera" e accept="image/*" forza l'apertura DIRETTA della fotocamera -->
+                <input type="file" id="cameraInput" accept="image/*" capture="camera">
             </label>
 
             <div class="stats-box" style="margin-top: 12px;">
@@ -486,7 +487,7 @@
         </div>
     </div>
 
-    <!-- POPUP MESSAGGI PERSONALIZZATO (NESSUN INDIRIZZO URL BROWSER) -->
+    <!-- POPUP MESSAGGI PERSONALIZZATO -->
     <div id="msgModal" class="modal-overlay">
         <div class="modal-card">
             <h3 id="msgTitle" style="margin-top: 0; color: var(--accent);">Messaggio</h3>
@@ -550,7 +551,6 @@
     let testInterval = null;
     let currentSelectedRace = null;
 
-    // Sostituto degli alert del browser (ZERO indirizzi URL visibili)
     function showCustomAlert(title, text) {
         document.getElementById('msgTitle').innerText = title;
         document.getElementById('msgText').innerText = text;
