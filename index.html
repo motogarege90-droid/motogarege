@@ -29,17 +29,17 @@
             min-height: 100vh;
         }
         .app-container {
-            width: 100%;
-            max-width: 480px;
+            width: 100vw;
+            height: 100vh;
+            max-width: none;
+            max-height: none;
             background: var(--card-bg);
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border-radius: 0;
+            box-shadow: none;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            height: 92vh;
-            max-height: 900px;
-            border: 1px solid var(--border);
+            border: none;
         }
         header {
             background: #090d16;
@@ -306,6 +306,27 @@
         .status-offline { background: #475569; color: white; }
         .status-online { background: var(--success); color: #0f172a; }
 
+        /* MODALE SELEZIONE MOTO */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-card {
+            background: #1e293b;
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
         nav {
             display: flex;
             background: #090d16;
@@ -349,19 +370,19 @@
         <div id="tab-garage" class="tab-content active">
             <h3>Aggiungi Nuova Moto</h3>
             <div class="bike-preview" id="bikePreviewBox">
-                <span id="placeholderText">Carica la foto della moto o dello scooter</span>
+                <span id="placeholderText">Scatta una foto alla moto con la fotocamera</span>
                 <img id="bikeImage" src="" alt="Moto">
             </div>
             
             <label class="btn" style="display:block; text-align:center; box-sizing: border-box;">
-                📸 Carica Foto
-                <input type="file" id="cameraInput" accept="image/*">
+                📸 Scatta Foto Fotocamera
+                <input type="file" id="cameraInput" accept="image/*" capture="environment">
             </label>
 
             <div class="stats-box" style="margin-top: 12px;">
                 <div class="stat-row">
-                    <span>Name:</span> 
-                    <input type="text" id="bikeBrandInput" placeholder="Name" value="Name">
+                    <span>Nome:</span> 
+                    <input type="text" id="bikeBrandInput" placeholder="Nome Moto" value="Mia Moto">
                 </div>
                 <div class="stat-row">
                     <span>Categoria:</span>
@@ -463,6 +484,23 @@
         </div>
     </div>
 
+    <!-- MODALE SELEZIONE MOTO PER GARA -->
+    <div id="raceBikeModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 style="margin-top: 0; color: var(--accent);">Scegli la tua Moto</h3>
+            <p style="font-size: 0.85rem; color: #94a3b8;">Seleziona la moto con cui disputare la gara:</p>
+            <div class="stat-row">
+                <select id="raceBikeSelect" style="width: 100%; padding: 10px; margin-bottom: 15px;">
+                    <option value="">-- Seleziona una Moto --</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" style="background: var(--success); color: white; margin-top:0;" onclick="confirmRaceStart()">🚦 Partecipa alla Gara</button>
+                <button class="btn" style="background: var(--danger); color: white; margin-top:0;" onclick="closeRaceModal()">Annulla</button>
+            </div>
+        </div>
+    </div>
+
     <nav>
         <button class="nav-btn active" onclick="switchTab('garage', this)">
             <span class="nav-icon">🏠</span>
@@ -489,7 +527,7 @@
 
 <script>
     let gameState = {
-        money: 3500,
+        money: 1200,
         savedBikes: [],
         inventory: [],
         activeBikeId: null,
@@ -499,8 +537,8 @@
     let peer = null;
     let peerConn = null;
     let testInterval = null;
+    let currentSelectedRace = null;
 
-    // Pezzi per la modifica dell'accelerazione e della velocità massima
     const shopItems = [
         { id: 'gruppo', category: 'Gruppi Termici', name: 'Gruppo Termico 70cc Base Ghisa', desc: 'Forte spinta iniziale', price: 160, accelMult: 1.4, maxSpeedBonus: 15 },
         { id: 'gruppo', category: 'Gruppi Termici', name: 'Gruppo Termico 70cc Racing Alluminio', desc: 'Scatto cattivo e più allungo', price: 320, accelMult: 1.8, maxSpeedBonus: 28 },
@@ -524,7 +562,7 @@
     ];
 
     function calculateBikeMaxSpeed(bike) {
-        let baseSpeed = bike.modelType === 'sportbike' ? 110 : 48; // Motorino 50cc di serie fa circa 48 km/h
+        let baseSpeed = bike.modelType === 'sportbike' ? 110 : 48;
         let bonus = 0;
         if (bike.parts) {
             Object.keys(bike.parts).forEach(key => {
@@ -613,7 +651,7 @@
                         <h4>${race.name}</h4>
                         <p>${race.desc}<br>Premio: <strong>+${race.reward} €</strong></p>
                     </div>
-                    <button class="btn" style="width: auto; margin:0;" onclick="startSingleRace(${race.reqSpeed}, ${race.reward})">Gareggia</button>
+                    <button class="btn" style="width: auto; margin:0;" onclick="openRaceBikeSelection(${race.reqSpeed}, ${race.reward})">Gareggia</button>
                 </div>
             `;
         });
@@ -665,11 +703,11 @@
 
     function saveBike() {
         if (!gameState.tempPhoto) {
-            alert("⚠️ Per salvare devi prima caricare la foto del motorino!");
+            alert("⚠️ Scatta una foto alla moto prima di salvare!");
             return;
         }
 
-        const brand = document.getElementById('bikeBrandInput').value;
+        const brand = document.getElementById('bikeBrandInput').value || "Moto Personalizzata";
         const modelType = document.getElementById('model3dSelect').value;
 
         const initialParts = {};
@@ -687,7 +725,7 @@
         gameState.tempPhoto = null;
         document.getElementById('bikeImage').style.display = 'none';
         document.getElementById('placeholderText').style.display = 'block';
-        document.getElementById('bikeBrandInput').value = "Name";
+        document.getElementById('bikeBrandInput').value = "Mia Moto";
         
         alert("Motorino salvato nel Garage!");
         updateUI();
@@ -711,7 +749,56 @@
         }
     }
 
-    // --- FISICA REALE ACCELERAZIONE MOTORINO ---
+    /* SELEZIONE MOTO E GARA */
+    function openRaceBikeSelection(reqSpeed, reward) {
+        if (gameState.savedBikes.length === 0) {
+            alert("⚠️ Non hai moto nel Garage! Creane e salvane una prima di gareggiare.");
+            return;
+        }
+
+        currentSelectedRace = { reqSpeed, reward };
+
+        const select = document.getElementById('raceBikeSelect');
+        select.innerHTML = `<option value="">-- Seleziona una Moto --</option>`;
+        gameState.savedBikes.forEach(bike => {
+            const speed = calculateBikeMaxSpeed(bike);
+            const opt = document.createElement('option');
+            opt.value = bike.id;
+            opt.innerText = `${bike.brand} - Vel. Max: ${speed} km/h`;
+            select.appendChild(opt);
+        });
+
+        document.getElementById('raceBikeModal').style.display = 'flex';
+    }
+
+    function closeRaceModal() {
+        document.getElementById('raceBikeModal').style.display = 'none';
+        currentSelectedRace = null;
+    }
+
+    function confirmRaceStart() {
+        const bikeId = document.getElementById('raceBikeSelect').value;
+        if (!bikeId) {
+            alert("Seleziona una moto dal menu prima di gareggiare!");
+            return;
+        }
+
+        const bike = gameState.savedBikes.find(b => b.id == bikeId);
+        if (!bike || !currentSelectedRace) return;
+
+        const maxSpeed = calculateBikeMaxSpeed(bike);
+        closeRaceModal();
+
+        if (maxSpeed >= currentSelectedRace.reqSpeed) {
+            gameState.money += currentSelectedRace.reward;
+            alert(`🏆 VITTORIA! Con la tua ${bike.brand} (${maxSpeed} km/h) hai vinto la sfida!\nPremio incassato: +${currentSelectedRace.reward} €`);
+        } else {
+            alert(`❌ SCONFITTA! La tua ${bike.brand} (${maxSpeed} km/h) non è abbastanza veloce per questa gara (richiesti almeno ${currentSelectedRace.reqSpeed} km/h). Elaborala nell'Officina!`);
+        }
+        updateUI();
+    }
+
+    /* TESTER ACCELERAZIONE REALE */
     function updateTesterOptions() {
         const select = document.getElementById('testerBikeSelect');
         const currentVal = select.value;
@@ -763,7 +850,7 @@
         let timeTo40 = null;
         let timeToMax = null;
 
-        const dt = 0.03; // Passaggio temporale (30 ms)
+        const dt = 0.03;
 
         document.getElementById('startTestBtn').disabled = true;
         document.getElementById('testResultText').innerText = "🏍️ Spalancato! In accelerazione...";
@@ -771,7 +858,6 @@
         testInterval = setInterval(() => {
             elapsedSeconds += dt;
 
-            // FISICA REALE EROGAZIONE MOTORINO
             let speedRatio = currentSpeed / maxSpeed;
             let baseRate = 18.0 * accelMultiplier;
             
@@ -830,7 +916,7 @@
 
             let dropdownItemsHtml = '';
             if (compatibleParts.length === 0) {
-                dropdownItemsHtml = `<p style="font-size:0.75rem; color:#94a3b8; margin:5px 0;">Nessun pezzo disponibile.</p>`;
+                dropdownItemsHtml = `<p style="font-size:0.75rem; color:#94a3b8; margin:5px 0;">Nessun pezzo compatibile in inventario.</p>`;
             } else {
                 compatibleParts.forEach(part => {
                     dropdownItemsHtml += `
@@ -844,16 +930,16 @@
 
             slotsHtml += `
                 <div class="slot-box">
-                    <div class="slot-header" onclick="toggleDropdown('${cat.key}')">
+                    <div class="slot-header" onclick="toggleSlotDropdown('${cat.key}')">
                         <div>
-                            <strong style="font-size:0.85rem; display:block;">${cat.label}</strong>
-                            <span style="font-size:0.75rem; color:${mountedPart ? 'var(--success)' : '#94a3b8'};">
-                                ${mountedPart ? `${mountedPart.name}` : 'Pezzo originale'}
+                            <strong>${cat.label}</strong><br>
+                            <span style="font-size:0.8rem; color:${mountedPart ? 'var(--accent)' : '#94a3b8'};">
+                                ${mountedPart ? '🔧 In uso: ' + mountedPart.name : '⚪ Originale'}
                             </span>
                         </div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            ${mountedPart ? `<button class="edit-btn" style="background:var(--danger);" onclick="event.stopPropagation(); unequipPart('${cat.key}')">Smonta</button>` : ''}
-                            <span style="font-size:0.8rem; color:var(--accent);">▼ Scegli</span>
+                        <div>
+                            ${mountedPart ? `<button class="edit-btn" style="background:var(--danger); margin-right:5px;" onclick="event.stopPropagation(); unmountPart('${cat.key}')">Smonta</button>` : ''}
+                            <span>▼</span>
                         </div>
                     </div>
                     <div class="dropdown-content" id="dropdown-${cat.key}">
@@ -865,154 +951,90 @@
         document.getElementById('installedPartsSlots').innerHTML = slotsHtml;
     }
 
-    function toggleDropdown(key) {
+    function toggleSlotDropdown(key) {
         const drop = document.getElementById(`dropdown-${key}`);
-        if (drop) {
-            drop.classList.toggle('open');
-        }
+        if (drop) drop.classList.toggle('open');
     }
 
-    function mountPart(categoryKey, uniqueKey) {
+    function mountPart(slotKey, uniqueKey) {
         const bike = gameState.savedBikes.find(b => b.id === gameState.activeBikeId);
-        if (bike.parts[categoryKey]) {
-            gameState.inventory.push(bike.parts[categoryKey]);
+        if (!bike) return;
+
+        const invIndex = gameState.inventory.findIndex(i => i.uniqueKey === uniqueKey);
+        if (invIndex === -1) return;
+
+        const newPart = gameState.inventory[invIndex];
+
+        if (bike.parts[slotKey]) {
+            gameState.inventory.push(bike.parts[slotKey]);
         }
 
-        const partIndex = gameState.inventory.findIndex(i => i.uniqueKey === uniqueKey);
-        if (partIndex !== -1) {
-            const partToMount = gameState.inventory[partIndex];
-            bike.parts[categoryKey] = partToMount;
-            gameState.inventory.splice(partIndex, 1);
-            updateUI();
-        }
+        bike.parts[slotKey] = newPart;
+        gameState.inventory.splice(invIndex, 1);
+
+        updateUI();
     }
 
-    function unequipPart(categoryKey) {
+    function unmountPart(slotKey) {
         const bike = gameState.savedBikes.find(b => b.id === gameState.activeBikeId);
-        const part = bike.parts[categoryKey];
-        if (part) {
-            gameState.inventory.push(part);
-            bike.parts[categoryKey] = null;
-            updateUI();
-        }
+        if (!bike || !bike.parts[slotKey]) return;
+
+        gameState.inventory.push(bike.parts[slotKey]);
+        bike.parts[slotKey] = null;
+
+        updateUI();
     }
 
-    function startSingleRace(reqSpeed, reward) {
-        if (gameState.savedBikes.length === 0) {
-            alert("Devi prima aggiungere e selezionare un motorino dal Garage!");
-            return;
-        }
-
-        const currentBike = gameState.savedBikes[0];
-        const bikeSpeed = calculateBikeMaxSpeed(currentBike);
-
-        if (bikeSpeed >= reqSpeed) {
-            gameState.money += reward;
-            updateUI();
-            alert(`🏎️ Gara Vinta! Il tuo motorino (${bikeSpeed} km/h) è stato più veloce!\nHai guadagnato +${reward} €!`);
-        } else {
-            alert(`❌ Gara Persa! Il tuo motorino (${bikeSpeed} km/h) è troppo lento. Elaboralo in officina!`);
-        }
-    }
-
-    // --- MULTIPLAYER REALTIME ---
-    function initializePeer(onOpenCallback) {
-        if (peer) return;
-        peer = new Peer();
-
-        peer.on('open', id => {
-            document.getElementById('connectionStatus').innerText = "Online";
-            document.getElementById('connectionStatus').className = "status-badge status-online";
-            if (onOpenCallback) onOpenCallback(id);
-        });
-
-        peer.on('connection', conn => {
-            peerConn = conn;
-            setupConnection();
-        });
-
-        peer.on('error', err => {
-            console.error("Errore PeerJS:", err);
-            alert("Impossibile connettersi al server.");
-        });
-    }
-
+    /* MULTIPLAYER PEERJS */
     function createLiveLobby() {
-        if (gameState.savedBikes.length === 0) {
-            alert("Crea e salva prima un motorino nel garage!");
-            return;
-        }
+        if (peer) peer.destroy();
 
-        initializePeer((peerId) => {
-            const currentUrl = window.location.href.split('?')[0];
-            const inviteUrl = `${currentUrl}?lobby=${peerId}`;
-            
-            const input = document.getElementById('inviteLinkInput');
-            input.value = inviteUrl;
+        const randomId = 'garage-room-' + Math.floor(Math.random() * 10000);
+        peer = new Peer(randomId);
+
+        peer.on('open', (id) => {
+            const link = window.location.origin + window.location.pathname + '?room=' + id;
+            document.getElementById('inviteLinkInput').value = link;
             document.getElementById('linkBox').style.display = 'flex';
+            document.getElementById('connectionStatus').innerText = 'In attesa dell\'avversario...';
+            document.getElementById('connectionStatus').className = 'status-badge status-offline';
+            
+            navigator.clipboard.writeText(link).then(() => {
+                alert("Link della stanza copiato negli appunti!");
+            });
+        });
 
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(inviteUrl).then(() => {
-                    alert("📋 Link della stanza GENERATO e COPIATO negli appunti!");
-                }).catch(() => {
-                    alert("📋 Link GENERATO!");
-                });
-            } else {
-                alert("📋 Link GENERATO!");
-            }
+        peer.on('connection', (conn) => {
+            peerConn = conn;
+            setupPeerEvents();
         });
     }
 
-    function setupConnection() {
-        alert("🎮 Un amico si è connesso! Sfida imminente...");
+    function setupPeerEvents() {
+        document.getElementById('connectionStatus').innerText = 'Online - Connesso!';
+        document.getElementById('connectionStatus').className = 'status-badge status-online';
 
-        peerConn.on('open', () => {
-            const currentBike = gameState.savedBikes[0];
-            const mySpeed = calculateBikeMaxSpeed(currentBike);
-
-            peerConn.send({ type: 'RACE_DATA', speed: mySpeed, brand: currentBike.brand });
-        });
-
-        peerConn.on('data', data => {
-            if (data.type === 'RACE_DATA') {
-                const currentBike = gameState.savedBikes[0];
-                const mySpeed = calculateBikeMaxSpeed(currentBike);
-
-                if (mySpeed > data.speed) {
-                    gameState.money += 300;
-                    updateUI();
-                    alert(`🏆 SFIDA VINTA!\n\nIl tuo motorino (${mySpeed} km/h) ha superato quello del tuo amico (${data.speed} km/h)!\nHai guadagnato +300 €!`);
-                } else if (mySpeed < data.speed) {
-                    alert(`❌ SFIDA PERSA!\n\nIl motorino del tuo amico (${data.speed} km/h) è stato più veloce del tuo (${mySpeed} km/h).`);
-                } else {
-                    alert(`🤝 PAREGGIO!\n\nAvete la stessa velocità massima (${mySpeed} km/h)!`);
-                }
-            }
+        peerConn.on('data', (data) => {
+            console.log('Ricevuto:', data);
         });
     }
 
-    window.addEventListener('load', () => {
+    function checkURLRoom() {
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('lobby')) {
-            const lobbyId = urlParams.get('lobby');
+        const roomId = urlParams.get('room');
+        if (roomId) {
             switchTab('races', document.querySelectorAll('.nav-btn')[4]);
-
-            setTimeout(() => {
-                if (gameState.savedBikes.length === 0) {
-                    alert(`🚨 Sei entrato nella stanza di sfida!\n\nPer gareggiare, prima crea e salva un motorino nel Garage.`);
-                    return;
-                }
-
-                initializePeer(() => {
-                    peerConn = peer.connect(lobbyId);
-                    setupConnection();
-                });
-            }, 800);
+            peer = new Peer();
+            peer.on('open', () => {
+                peerConn = peer.connect(roomId);
+                setupPeerEvents();
+            });
         }
-    });
+    }
 
+    // Inizializzazione
     updateUI();
+    checkURLRoom();
 </script>
-
 </body>
 </html>
